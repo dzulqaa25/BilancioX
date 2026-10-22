@@ -1,0 +1,178 @@
+@import "tailwindcss";
+
+/* =====================================================================
+   Bilancio — palet "Italia minimalis"
+   ===================================================================== */
+:root {
+  --bg: #f7f2e8; /* Avorio */
+  --card: #fffdf8; /* Carta */
+  --ink: #2b211c; /* Espresso */
+  --muted: #8c7d70;
+  --line: #e9dfcc;
+  --soft: #efe6d4;
+  --hero: #2b211c;
+  --hero-ink: #f7f2e8;
+
+  --terracotta: #c0532f;
+  --oliva: #6b7a3a;
+  --limone: #a88514; /* versi teks agar kontras */
+  --limone-fill: #e3bc3f;
+  --amalfi: #2f5d7c;
+  --oro: #b89b5e;
+  --prugna: #8e5b7a;
+  --salvia: #5e8c8a;
+  --grigio: #a39486;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* "Notte a Roma" */
+  :root {
+    --bg: #17110e;
+    --card: #221a16;
+    --ink: #f1e8d8;
+    --muted: #a69585;
+    --line: #3a2e27;
+    --soft: #2e241f;
+    --hero: #2e231d;
+    --hero-ink: #f1e8d8;
+
+    --terracotta: #e58b6b;
+    --oliva: #a7b56e;
+    --limone: #e3bc3f;
+    --limone-fill: #e3bc3f;
+    --amalfi: #7fa9c9;
+    --oro: #cdb27a;
+    --prugna: #c08fae;
+    --salvia: #8fbcb9;
+    --grigio: #8a7b6e;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-soft: var(--soft);
+  --color-hero: var(--hero);
+  --color-hero-ink: var(--hero-ink);
+  --color-terracotta: var(--terracotta);
+  --color-oliva: var(--oliva);
+  --color-limone: var(--limone);
+  --color-limone-fill: var(--limone-fill);
+  --color-amalfi: var(--amalfi);
+  --color-oro: var(--oro);
+
+  --font-serif: "Bodoni 72", "Bodoni MT", Didot, "Playfair Display", Georgia, serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+}
+
+html {
+  background: var(--bg);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--bg);
+  /* tekstur kertas halus */
+  background-image: radial-gradient(color-mix(in srgb, var(--ink) 4%, transparent) 1px, transparent 1px);
+  background-size: 4px 4px;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* iOS men-zoom input di bawah 16px; cegah dengan ukuran minimum 16px */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility rule-oro {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--oro), transparent);
+}
+
+@utility double-rule {
+  border-top: 1px solid var(--oro);
+  border-bottom: 1px solid var(--oro);
+  height: 4px;
+}
+
+@utility arch {
+  border-radius: 999px 999px 20px 20px / 160px 160px 20px 20px;
+}
+
+@utility card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+@utility tricolore {
+  height: 3px;
+  width: 36px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #6b7a3a 33%, #f7f2e8 33% 66%, #c0532f 66%);
+}
+
+@utility pt-safe {
+  padding-top: max(env(safe-area-inset-top), 16px);
+}
+
+@utility pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-sheet {
+  animation: sheet-up 320ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+@utility animate-fade {
+  animation: fade-in 200ms ease-out;
+}
+@utility animate-rise {
+  animation: rise 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
