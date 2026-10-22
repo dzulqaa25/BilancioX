@@ -56,10 +56,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     const sb = getSupabase();
-    sb.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setAuthStatus(data.session ? "signedIn" : "signedOut");
-    });
+    sb.auth
+      .getSession()
+      .then(({ data }) => {
+        setSession(data.session);
+        setAuthStatus(data.session ? "signedIn" : "signedOut");
+      })
+      .catch(() => setAuthStatus("signedOut"));
     const { data: sub } = sb.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setAuthStatus(s ? "signedIn" : "signedOut");
