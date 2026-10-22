@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
-import type { ParsedIntent } from "@/lib/parser";
+import { parseMessageLocal, type ParsedIntent } from "@/lib/parser";
 import { todayISO } from "@/lib/format";
 import { Button, Eyebrow, PageHeader } from "@/components/ui";
 import { IconChevronLeft, IconShortcut } from "@/components/Icons";
@@ -32,12 +32,17 @@ export default function SettingsPage() {
     setMsg("");
     setSending(true);
     try {
-      const res = await fetch("/api/ai/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed }),
-      });
-      const intent = (await res.json()) as ParsedIntent;
+      let intent: ParsedIntent;
+      try {
+        const res = await fetch("/api/ai/parse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: trimmed }),
+        });
+        intent = res.ok ? ((await res.json()) as ParsedIntent) : parseMessageLocal(trimmed, "shortcut");
+      } catch {
+        intent = parseMessageLocal(trimmed, "shortcut");
+      }
 
       if (intent.kind === "transaction") {
         await addTransaction(intent.data);
@@ -54,8 +59,8 @@ export default function SettingsPage() {
         }
       }
       setLastReply(intent.reply.replace(/[*_]/g, ""));
-    } catch {
-      setLastReply("Gagal memproses input.");
+    } catch (err) {
+      setLastReply(`Gagal menyimpan: ${err instanceof Error ? err.message : "Terjadi kesalahan"}`);
     } finally {
       setSending(false);
     }

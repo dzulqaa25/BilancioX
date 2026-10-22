@@ -10,29 +10,34 @@ export type ParsedIntent =
   | { kind: "unknown"; reply: string };
 
 const KEYWORD_CATEGORY: [RegExp, string][] = [
-  [/\b(makan|minum|kopi|teh|nasi|ayam|mie|bakso|seblak|warteg|kantin|sarapan|jajan|gofood|grabfood|snack|roti|susu|padang|geprek)\b/i, "makan"],
-  [/\b(ojol|gojek|grab|maxim|bensin|parkir|bus|kereta|krl|mrt|angkot|transjakarta|tol|transport)\b/i, "transportasi"],
+  [/\b(makan|minum|kopi|teh|nasi|ayam|mie|bakso|seblak|warteg|kantin|sarapan|jajan|gofood|grabfood|snack|roti|susu|padang|geprek|soto|sate|es|jus|catering|laundry)\b/i, "makan"],
+  [/\b(ojol|gojek|grab|maxim|bensin|parkir|bus|kereta|krl|mrt|angkot|transjakarta|tol|transport|pertalite|pertamax)\b/i, "transportasi"],
   [/\b(beli|belanja|shopee|tokopedia|tiktok|lazada|baju|kaos|celana|sepatu|sandal|skincare|sabun|shampo|alfamart|indomaret)\b/i, "belanja"],
-  [/\b(listrik|token|pulsa|paket\s*data|kuota|wifi|internet|air|pdam|kos|kost|sewa|langganan|spotify|netflix)\b/i, "tagihan"],
-  [/\b(nonton|bioskop|game|steam|karaoke|nongkrong|konser|jalan|healing|hiburan)\b/i, "hiburan"],
+  [/\b(listrik|token|pulsa|paket\s*data|kuota|wifi|internet|air|pdam|kos|kost|sewa|langganan|spotify|netflix|icloud)\b/i, "tagihan"],
+  [/\b(nonton|bioskop|game|steam|karaoke|nongkrong|konser|jalan|healing|hiburan|topup)\b/i, "hiburan"],
   [/\b(obat|dokter|apotek|klinik|vitamin|sakit|rs|bpjs|kesehatan)\b/i, "kesehatan"],
-  [/\b(buku|print|fotokopi|jilid|ukt|spp|kampus|kuliah|alat\s*tulis|kursus|seminar)\b/i, "pendidikan"],
+  [/\b(buku|print|fotokopi|jilid|ukt|spp|kampus|kuliah|alat\s*tulis|kursus|seminar|praktikum)\b/i, "pendidikan"],
 ];
 
-/** Mengekstrak nominal (mis. "25rb", "1,5jt", "35.000", "20000") dari kalimat. */
+/** Mengekstrak nominal (mis. "25rb", "1,5jt", "35.000", "20000", atau "25") dari kalimat. */
 function extractAmount(text: string): { amount: number; cleaned: string } {
-  const regex = /(?:rp\.?\s*)?(\d+(?:[.,]\d+)?)\s*(rb|ribu|k|jt|juta)\b|(?:rp\.?\s*)(\d[\d.,]*)|\b(\d{4,}|\d{1,3}(?:[.,]\d{3})+)\b/i;
+  const regex =
+    /(?:rp\.?\s*)?(\d+(?:[.,]\d+)?)\s*(rb|ribu|k|jt|juta)\b|(?:rp\.?\s*)(\d[\d.,]*)|\b(\d{4,}|\d{1,3}(?:[.,]\d{3})+|\d{1,3})\b/i;
   const m = text.match(regex);
   if (!m) return { amount: 0, cleaned: text.trim() };
   const raw = m[1] ? `${m[1]}${m[2]}` : (m[3] ?? m[4] ?? "0");
-  const amount = parseAmount(raw);
+  let amount = parseAmount(raw);
+  // Jika pengguna mengetik angka pendek seperti "kopi 18" tanpa "rb", anggap ribuan (Rp 18.000)
+  if (amount > 0 && amount < 1000 && !m[2]) {
+    amount *= 1000;
+  }
   const cleaned = text.replace(m[0], " ").replace(/\s+/g, " ").trim();
   return { amount, cleaned };
 }
 
 /**
  * Parser lokal berbasis aturan (tanpa kuota AI).
- * Dipakai langsung jika GEMINI_API_KEY belum diisi atau sebagai cadangan.
+ * Dipakai langsung jika GEMINI_API_KEY belum diisi atau sebagai cadangan instan.
  */
 export function parseMessageLocal(rawText: string, source: "app" | "shortcut" = "shortcut"): ParsedIntent {
   const text = rawText.trim();
@@ -77,7 +82,13 @@ export function parseMessageLocal(rawText: string, source: "app" | "shortcut" = 
     const isOwed = /\b(piutang|dipinjam|minjem\s*ke\s*aku|talangin|pinjamin)\b/i.test(text);
     const direction: DebtDirection = isOwed ? "owed" : "owe";
     const personMatch = cleaned.match(/\b(?:ke|sama|dari|untuk|buat)\s+([A-Za-zÀ-ÿ]+)/i);
-    const person = personMatch?.[1] ?? (cleaned.replace(/\b(hutang|utang|pinjam|piutang|talangin|ke|sama|dari)\b/gi, "").trim().split(/\s+/)[0] || "Teman");
+    const person =
+      personMatch?.[1] ??
+      (cleaned
+        .replace(/\b(hutang|utang|pinjam|piutang|talangin|ke|sama|dari)\b/gi, "")
+        .trim()
+        .split(/\s+/)[0] ||
+        "Teman");
     const note = cleaned || null;
     return {
       kind: "debt",
@@ -87,7 +98,8 @@ export function parseMessageLocal(rawText: string, source: "app" | "shortcut" = 
   }
 
   // ---- Pemasukan vs Pengeluaran ----
-  const isIncome = /\b(uang\s*jajan|kiriman|bulanan|pemasukan|masuk|dapat|dikasih|gaji|bonus|beasiswa|freelance|jual)\b/i.test(text);
+  const isIncome =
+    /\b(uang\s*jajan|kiriman|bulanan|pemasukan|masuk|dapat|dikasih|gaji|bonus|beasiswa|freelance|jual)\b/i.test(text);
   const type: TxType = isIncome ? "income" : "expense";
 
   let category = type === "income" ? "uang_jajan" : "lainnya";

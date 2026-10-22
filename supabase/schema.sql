@@ -12,9 +12,12 @@ create table if not exists public.transactions (
   category    text not null,
   note        text,
   date        date not null default current_date,
-  source      text not null default 'app' check (source in ('app', 'shortcut')),
+  source      text not null default 'app' check (source in ('app', 'shortcut', 'whatsapp')),
   created_at  timestamptz not null default now()
 );
+-- Jika tabel sudah terlanjur dibuat sebelumnya, perbarui constraint source:
+alter table public.transactions drop constraint if exists transactions_source_check;
+alter table public.transactions add constraint transactions_source_check check (source in ('app', 'shortcut', 'whatsapp'));
 create index if not exists transactions_user_date_idx on public.transactions (user_id, date desc);
 
 -- ---------- Hutang / piutang ----------

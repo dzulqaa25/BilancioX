@@ -6,7 +6,7 @@ import { useStore } from "@/lib/store";
 import { useShell } from "@/components/AppShell";
 import { analyze, localSummary, netBalance, totalDebt, totalSavings } from "@/lib/finance";
 import { formatCompact, formatMonthTitle, formatRp, greeting, todayISO } from "@/lib/format";
-import type { ParsedIntent } from "@/lib/parser";
+import { parseMessageLocal, type ParsedIntent } from "@/lib/parser";
 import { EmptyState, Eyebrow, PageHeader } from "@/components/ui";
 import { TransactionRow } from "@/components/TransactionRow";
 import { IconChevron, IconShare, IconSparkle } from "@/components/Icons";
@@ -31,18 +31,19 @@ export default function HomePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: q }),
     })
-      .then((r) => r.json() as Promise<ParsedIntent>)
+      .then((r) => (r.ok ? (r.json() as Promise<ParsedIntent>) : parseMessageLocal(q, "shortcut")))
+      .catch(() => parseMessageLocal(q, "shortcut"))
       .then(async (intent) => {
         if (intent.kind === "transaction") await addTransaction(intent.data);
         else if (intent.kind === "debt") await addDebt(intent.data);
         else if (intent.kind === "savings" && data.goals[0]) {
           const hint = intent.goalHint.toLowerCase();
           const goal = data.goals.find((g) => g.name.toLowerCase().includes(hint)) ?? data.goals[0];
-          await addEntry({ goal_id: goal.id, amount: intent.amount, date: todayISO(), note: "via iOS Shortcut" });
+          await addEntry({ goal_id: goal.id, amount: intent.amount, date: todayISO(), note: "via Shortcut" });
         }
         setQuickNotice(intent.reply.replace(/[*_]/g, ""));
       })
-      .catch(() => setQuickNotice("Gagal memproses input pintasan."));
+      .catch((err) => setQuickNotice(`Gagal menyimpan: ${err instanceof Error ? err.message : "Terjadi kesalahan"}`));
   }, [addTransaction, addDebt, addEntry, data.goals]);
 
   const balance = netBalance(data);

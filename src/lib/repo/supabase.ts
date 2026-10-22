@@ -7,10 +7,14 @@ function check<T>(res: { data: T | null; error: { message: string } | null }): T
   return res.data as T;
 }
 
-/** Supabase mengembalikan kolom numeric sebagai string; ubah ke number. */
+/** Supabase mengembalikan kolom numeric sebagai string; ubah ke number & normalisasi source lama. */
 const num = (v: unknown) => (typeof v === "string" ? Number(v) : (v as number));
 
-const normTx = (r: Transaction): Transaction => ({ ...r, amount: num(r.amount) });
+const normTx = (r: Transaction & { source: string }): Transaction => ({
+  ...r,
+  amount: num(r.amount),
+  source: r.source === "whatsapp" || r.source === "shortcut" ? "shortcut" : "app",
+});
 const normDebt = (r: Debt): Debt => ({ ...r, amount: num(r.amount), paid: num(r.paid) });
 const normGoal = (r: SavingsGoal): SavingsGoal => ({
   ...r,
@@ -39,7 +43,24 @@ export const supabaseRepo: Repo = {
   },
 
   async addTransaction(t) {
-    return normTx(check(await getSupabase().from("transactions").insert(t).select().single()));
+    const sb = getSupabase();
+    const first = await sb.from("transactions").insert(t).select().single();
+    if (first.error && t.source === "shortcut" && /source_check|check constraint/i.test(first.error.message)) {
+      // Kompatibilitas otomatis jika tabel di Supabase dibuat dengan skema lama ('app' | 'whatsapp')
+      const fallback = await sb
+        .from("transactions")
+        .insert({ ...t, source: "whatsapp" })
+        .select()
+        .single();
+      if (!fallback.error) return normTx(fallback.data as Transaction);
+      const fallbackApp = await sb
+        .from("transactions")
+        .insert({ ...t, source: "app" })
+        .select()
+        .single();
+      return normTx(check(fallbackApp));
+    }
+    return normTx(check(first));
   },
   async updateTransaction(id, patch) {
     return normTx(check(await getSupabase().from("transactions").update(patch).eq("id", id).select().single()));
