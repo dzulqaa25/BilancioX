@@ -1,10 +1,10 @@
 import { buildParsePrompt, parseMessageLocal, type ParsedIntent } from "@/lib/parser";
 import { getCategory } from "@/lib/categories";
 import { formatRp, todayISO } from "@/lib/format";
-import { callGemini } from "../insight/route";
+import { callGemini } from "@/lib/gemini";
 
 /** Mem-parse pesan menggunakan Gemini jika tersedia, atau parser lokal sebagai cadangan. */
-export async function parseWithAI(message: string, source: "app" | "shortcut" = "shortcut"): Promise<ParsedIntent> {
+async function parseWithAI(message: string, source: "app" | "shortcut" = "shortcut"): Promise<ParsedIntent> {
   if (!process.env.GEMINI_API_KEY) {
     return parseMessageLocal(message, source);
   }
