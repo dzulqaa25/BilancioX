@@ -21,7 +21,7 @@ export default function HomePage() {
   useEffect(() => {
     if (handledQuick.current) return;
     const params = new URLSearchParams(window.location.search);
-    const q = params.get("quick")?.trim();
+    const q = (params.get("quick") || params.get("q") || params.get("text"))?.trim();
     if (!q) return;
     handledQuick.current = true;
     window.history.replaceState({}, "", "/");

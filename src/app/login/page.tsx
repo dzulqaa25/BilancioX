@@ -14,10 +14,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [pendingQuick, setPendingQuick] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("quick") || params.get("q") || params.get("text");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- membaca parameter URL saat mount
+    if (q) setPendingQuick(q);
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured || authStatus === "signedIn") {
-      router.replace("/");
+      const search = typeof window !== "undefined" ? window.location.search : "";
+      router.replace(search ? `/${search}` : "/");
     }
   }, [authStatus, router]);
 
@@ -30,7 +39,8 @@ export default function LoginPage() {
       if (mode === "signin") {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.replace("/");
+        const search = typeof window !== "undefined" ? window.location.search : "";
+        router.replace(search ? `/${search}` : "/");
       } else {
         const { error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
@@ -50,6 +60,11 @@ export default function LoginPage() {
         <Eyebrow>Personal Finance</Eyebrow>
         <h1 className="mt-1 font-serif text-5xl">Bilancio</h1>
         <p className="mt-2 text-sm text-muted">Masuk untuk membuka buku catatan keuanganmu.</p>
+        {pendingQuick && (
+          <p className="mt-3 rounded-2xl border border-oro bg-card px-4 py-2.5 text-xs text-ink">
+            ⚡ Masuk sekali di Safari untuk menyimpan pintasan: <b>&ldquo;{pendingQuick}&rdquo;</b>
+          </p>
+        )}
       </div>
 
       <form onSubmit={submit} className="card space-y-4 p-5">

@@ -34,7 +34,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sheet, setSheet] = useState<TxSheetState>({ open: false, type: "expense", editing: null });
 
   useEffect(() => {
-    if (authStatus === "signedOut") router.replace("/login");
+    if (authStatus === "signedOut") {
+      const search = typeof window !== "undefined" ? window.location.search : "";
+      router.replace(search ? `/login${search}` : "/login");
+    }
   }, [authStatus, router]);
 
   const openNew = useCallback((type: TxType = "expense") => setSheet({ open: true, type, editing: null }), []);

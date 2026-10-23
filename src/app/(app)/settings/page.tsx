@@ -24,7 +24,7 @@ export default function SettingsPage() {
   const [copied, setCopied] = useState(false);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "https://bilancio-kamu.vercel.app";
-  const shortcutBaseUrl = `${origin}/?quick=`;
+  const shortcutBaseUrl = `${origin}/quick`;
 
   async function runQuickInput(text: string) {
     const trimmed = text.trim();
@@ -152,7 +152,7 @@ export default function SettingsPage() {
 
       {/* Panduan 1-Cara iOS Shortcut */}
       <section className="card space-y-3 p-4 text-xs leading-relaxed">
-        <Eyebrow>iOS Shortcut Setup (3 Langkah)</Eyebrow>
+        <Eyebrow>iOS Shortcut Setup (Hanya 1 Aksi)</Eyebrow>
         <p className="text-muted">
           Salin link di bawah, lalu buka aplikasi <b>Shortcuts (Pintasan)</b> di iPhone → ketuk <b>+</b>:
         </p>
@@ -170,19 +170,19 @@ export default function SettingsPage() {
 
         <ol className="list-decimal space-y-1.5 pl-4 text-muted">
           <li>
-            Tambah aksi <b className="text-ink">Ask for Input</b> → isi Prompt: <i>Catat ke Bilancio</i>.
+            Di aplikasi <b>Shortcuts</b>, tambah <b className="text-ink">1 aksi saja: Open URLs</b> (<i>Buka URL</i>), lalu tempel link di atas.
           </li>
           <li>
-            Tambah aksi <b className="text-ink">URL Encode</b> (otomatis meneruskan teks dari langkah 1).
+            <i>(Atau jika memakai Ask for Input)</i>: gunakan{" "}
+            <code className="rounded bg-soft px-1 text-ink">{origin}/?quick=[Provided Input]</code>.
           </li>
           <li>
-            Tambah aksi <b className="text-ink">Open URLs</b> → tempel link di atas, lalu di belakang tanda{" "}
-            <code>=</code> pilih variabel <b className="text-ink">URL Encoded Text</b>.
+            <b>Penting untuk pengguna iPhone:</b> saat pertama kali Shortcut membuka Safari, <b>login 1× di Safari</b> (karena sesi login Safari dan aplikasi Home Screen terpisah di iOS).
           </li>
         </ol>
 
         <p className="text-muted">
-          💡 <b>Tips Back Tap:</b> buka <i>Settings iPhone → Accessibility → Touch → Back Tap → Double Tap</i> lalu pilih pintasan ini agar bisa mencatat hanya dengan ketuk 2× belakang iPhone.
+          💡 <b>Tips Back Tap:</b> buka <i>Settings iPhone → Accessibility → Touch → Back Tap → Double Tap</i> lalu pilih pintasan ini.
         </p>
       </section>
 
