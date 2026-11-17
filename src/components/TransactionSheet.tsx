@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Transaction, TxType } from "@/lib/types";
+import type { Transaction, TxType, WalletType } from "@/lib/types";
 import { categoriesFor } from "@/lib/categories";
 import { todayISO } from "@/lib/format";
 import { useStore } from "@/lib/store";
@@ -19,7 +19,6 @@ export function TransactionSheet({ state, onClose }: { state: TxSheetState; onCl
   const title = state.editing ? "Edit Transaction" : "New Transaction";
   return (
     <Sheet open={state.open} onClose={onClose} title={title} subtitle="Catat pemasukan atau pengeluaran">
-      {/* key memastikan form direset setiap kali dibuka */}
       <TransactionForm key={state.editing?.id ?? `new-${state.type}`} state={state} onDone={onClose} />
     </Sheet>
   );
@@ -29,6 +28,7 @@ function TransactionForm({ state, onDone }: { state: TxSheetState; onDone: () =>
   const { addTransaction, updateTransaction, deleteTransaction } = useStore();
   const e = state.editing;
   const [type, setType] = useState<TxType>(e?.type ?? state.type);
+  const [wallet, setWallet] = useState<WalletType>(e?.wallet ?? "digital");
   const [amount, setAmount] = useState(e?.amount ?? 0);
   const [category, setCategory] = useState(e?.category ?? categoriesFor(state.type)[0].id);
   const [note, setNote] = useState(e?.note ?? "");
@@ -59,12 +59,12 @@ function TransactionForm({ state, onDone }: { state: TxSheetState; onDone: () =>
   function save(ev: React.FormEvent) {
     ev.preventDefault();
     if (amount <= 0) return setError("Nominal harus lebih dari 0.");
-    const payload = { type, amount, category, note: note.trim() || null, date };
+    const payload = { type, wallet, amount, category, note: note.trim() || null, date };
     run(() => (e ? updateTransaction(e.id, payload) : addTransaction({ ...payload, source: "app" })));
   }
 
   return (
-    <form onSubmit={save} className="space-y-5 pb-2">
+    <form onSubmit={save} className="space-y-4 pb-2">
       <Segmented
         value={type}
         onChange={switchType}
@@ -75,6 +75,18 @@ function TransactionForm({ state, onDone }: { state: TxSheetState; onDone: () =>
       />
 
       <AmountInput value={amount} onChange={setAmount} autoFocus={!e} large />
+
+      <div>
+        <FieldLabel>Wallet / Jenis Saldo</FieldLabel>
+        <Segmented
+          value={wallet}
+          onChange={setWallet}
+          options={[
+            { value: "digital", label: "💳 Saldo Digital", activeClass: "bg-amalfi text-white" },
+            { value: "cash", label: "💵 Uang Cash", activeClass: "bg-hero text-hero-ink" },
+          ]}
+        />
+      </div>
 
       <div>
         <FieldLabel>Category</FieldLabel>
@@ -105,7 +117,7 @@ function TransactionForm({ state, onDone }: { state: TxSheetState; onDone: () =>
 
       <TextField
         label="Note"
-        placeholder="mis. Nasi padang di kantin"
+        placeholder="mis. Fried chicken di kantin"
         value={note}
         onChange={(ev) => setNote(ev.target.value)}
         maxLength={120}

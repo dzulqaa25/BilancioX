@@ -6,16 +6,19 @@ import { useShell } from "@/components/AppShell";
 import { ALL_CATEGORIES, getCategory } from "@/lib/categories";
 import { formatDayLabel, formatRp } from "@/lib/format";
 import { sumBy } from "@/lib/finance";
+import type { WalletType } from "@/lib/types";
 import { Chip, EmptyState, Eyebrow, PageHeader } from "@/components/ui";
 import { TransactionRow } from "@/components/TransactionRow";
 import { IconSearch } from "@/components/Icons";
 
 type Filter = "all" | "expense" | "income";
+type WalletFilter = "all" | WalletType;
 
 export default function TransactionsPage() {
   const { data } = useStore();
   const { openEdit } = useShell();
   const [filter, setFilter] = useState<Filter>("all");
+  const [walletFilter, setWalletFilter] = useState<WalletFilter>("all");
   const [cat, setCat] = useState<string>("all");
   const [q, setQ] = useState("");
 
@@ -23,6 +26,7 @@ export default function TransactionsPage() {
     const query = q.trim().toLowerCase();
     return data.transactions.filter((t) => {
       if (filter !== "all" && t.type !== filter) return false;
+      if (walletFilter !== "all" && t.wallet !== walletFilter) return false;
       if (cat !== "all" && t.category !== cat) return false;
       if (query) {
         const c = getCategory(t.category).label.toLowerCase();
@@ -31,7 +35,7 @@ export default function TransactionsPage() {
       }
       return true;
     });
-  }, [data.transactions, filter, cat, q]);
+  }, [data.transactions, filter, walletFilter, cat, q]);
 
   const groups = useMemo(() => {
     const map = new Map<string, typeof filtered>();
@@ -66,7 +70,7 @@ export default function TransactionsPage() {
         )}
       </label>
 
-      {/* Filter tipe & kategori */}
+      {/* Filter tipe & jenis saldo */}
       <div className="flex gap-2 overflow-x-auto pb-1">
         <Chip active={filter === "all"} onClick={() => setFilter("all")}>
           All
@@ -76,6 +80,12 @@ export default function TransactionsPage() {
         </Chip>
         <Chip active={filter === "income"} onClick={() => setFilter("income")}>
           Income
+        </Chip>
+        <Chip active={walletFilter === "digital"} onClick={() => setWalletFilter(walletFilter === "digital" ? "all" : "digital")}>
+          💳 Digital
+        </Chip>
+        <Chip active={walletFilter === "cash"} onClick={() => setWalletFilter(walletFilter === "cash" ? "all" : "cash")}>
+          💵 Cash
         </Chip>
       </div>
 

@@ -3,34 +3,68 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
-import { parseMessageLocal, type ParsedIntent } from "@/lib/parser";
-import { todayISO } from "@/lib/format";
-import { Button, Eyebrow, PageHeader } from "@/components/ui";
+import { getCategory } from "@/lib/categories";
+import { parseMessageLocal, walletLabel, type ParsedIntent } from "@/lib/parser";
+import { walletBalances } from "@/lib/finance";
+import { formatRp, todayISO } from "@/lib/format";
+import type { NewTransaction, WalletType } from "@/lib/types";
+import { AmountInput, Button, Eyebrow, PageHeader, Segmented } from "@/components/ui";
 import { IconChevronLeft, IconShortcut } from "@/components/Icons";
 
 const EXAMPLES = [
-  "nasi padang 22rb",
-  "uang jajan 1,5jt",
-  "ojol ke kampus 15k",
+  "fried chicken 30rb",
+  "fried chicken 30rb cash",
+  "ojol ke kampus 15k qris",
+  "uang jajan 1,5jt digital",
   "hutang ke Budi 50rb beli buku",
   "nabung liburan 100rb",
 ];
 
 export default function SettingsPage() {
-  const { mode, session, data, signOut, resetDemo, addTransaction, addDebt, addEntry } = useStore();
+  const {
+    mode,
+    session,
+    data,
+    settings,
+    updateSettings,
+    transferWallet,
+    signOut,
+    resetDemo,
+    addTransaction,
+    addDebt,
+    addEntry,
+  } = useStore();
+
   const [msg, setMsg] = useState("");
   const [sending, setSending] = useState(false);
+  const [pendingTx, setPendingTx] = useState<NewTransaction | null>(null);
   const [lastReply, setLastReply] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // State form Advanced Options (Budget & Saldo)
+  const [monthly, setMonthly] = useState(settings.monthlyBudget);
+  const [weekly, setWeekly] = useState(settings.weeklyBudget);
+  const [daily, setDaily] = useState(settings.dailyBudget);
+  const [autoBreak, setAutoBreak] = useState(settings.autoBreakdown);
+  const [cashInit, setCashInit] = useState(settings.cashInitial);
+  const [digitalInit, setDigitalInit] = useState(settings.digitalInitial);
+  const [savedNotice, setSavedNotice] = useState<string | null>(null);
+
+  // State Pindah Saldo (Cash <-> Digital)
+  const [transferDir, setTransferDir] = useState<WalletType>("digital");
+  const [transferAmt, setTransferAmt] = useState(0);
+
   const origin = typeof window !== "undefined" ? window.location.origin : "https://bilancio-kamu.vercel.app";
   const shortcutBaseUrl = `${origin}/quick`;
+  const wallets = walletBalances(data, settings);
 
   async function runQuickInput(text: string) {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
     setMsg("");
     setSending(true);
+    setPendingTx(null);
+    setLastReply(null);
     try {
       let intent: ParsedIntent;
       try {
@@ -45,6 +79,11 @@ export default function SettingsPage() {
       }
 
       if (intent.kind === "transaction") {
+        // Jika pengguna belum menuliskan "cash"/"digital", tampilkan pengingat & shortcut pilihan
+        if (!intent.walletSpecified) {
+          setPendingTx(intent.data);
+          return;
+        }
         await addTransaction(intent.data);
       } else if (intent.kind === "debt") {
         await addDebt(intent.data);
@@ -66,6 +105,59 @@ export default function SettingsPage() {
     }
   }
 
+  async function confirmPendingWallet(wallet: WalletType) {
+    if (!pendingTx || sending) return;
+    setSending(true);
+    try {
+      const finalTx: NewTransaction = { ...pendingTx, wallet };
+      await addTransaction(finalTx);
+      const cat = getCategory(finalTx.category);
+      setPendingTx(null);
+      setLastReply(
+        `✅ Tercatat (${finalTx.type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(wallet)})\n${cat.emoji} ${cat.label} · ${formatRp(finalTx.amount)}\n${finalTx.note ?? ""}`,
+      );
+    } catch (err) {
+      setLastReply(`Gagal menyimpan: ${err instanceof Error ? err.message : "Terjadi kesalahan"}`);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function handleMonthlyChange(val: number) {
+    setMonthly(val);
+    if (autoBreak && val > 0) {
+      setWeekly(Math.round(val / 4));
+      setDaily(Math.round(val / 30));
+    }
+  }
+
+  async function saveAdvanced(e: React.FormEvent) {
+    e.preventDefault();
+    await updateSettings({
+      monthlyBudget: monthly,
+      weeklyBudget: weekly,
+      dailyBudget: daily,
+      autoBreakdown: autoBreak,
+      cashInitial: cashInit,
+      digitalInitial: digitalInit,
+    });
+    setSavedNotice("Pengaturan Advanced berhasil disimpan ✓");
+    setTimeout(() => setSavedNotice(null), 2500);
+  }
+
+  async function submitTransfer(e: React.FormEvent) {
+    e.preventDefault();
+    if (transferAmt <= 0) return;
+    await transferWallet(transferDir, transferAmt);
+    setTransferAmt(0);
+    setSavedNotice(
+      transferDir === "digital"
+        ? `Berhasil pindah ${formatRp(transferAmt)} dari Digital ke Cash ✓`
+        : `Berhasil pindah ${formatRp(transferAmt)} dari Cash ke Digital ✓`,
+    );
+    setTimeout(() => setSavedNotice(null), 2500);
+  }
+
   function copyShortcutUrl() {
     navigator.clipboard.writeText(shortcutBaseUrl).then(() => {
       setCopied(true);
@@ -74,7 +166,7 @@ export default function SettingsPage() {
   }
 
   function exportJson() {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ ...data, settings }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -86,7 +178,7 @@ export default function SettingsPage() {
   return (
     <div className="animate-rise space-y-6">
       <PageHeader
-        eyebrow="Pintasan iPhone & pengaturan"
+        eyebrow="Pintasan, budget & dompet"
         title="Settings"
         right={
           <Link
@@ -98,13 +190,15 @@ export default function SettingsPage() {
         }
       />
 
-      {/* Quick Input (AI) */}
+      {/* Quick Input (AI) dengan Pengingat & Shortcut Cash/Digital */}
       <section className="card p-4">
         <div className="flex items-center gap-2">
           <IconShortcut className="text-terracotta" />
           <div>
             <Eyebrow>Quick Input (AI)</Eyebrow>
-            <p className="text-xs text-muted">Ketik kalimat bebas — otomatis dikategorikan &amp; dicatat</p>
+            <p className="text-xs text-muted">
+              Ketik kalimat bebas — otomatis mengenali makanan bahasa Inggris &amp; mengingatkan pilihan Cash/Digital
+            </p>
           </div>
         </div>
 
@@ -118,7 +212,7 @@ export default function SettingsPage() {
           <input
             value={msg}
             onChange={(e) => setMsg(e.target.value)}
-            placeholder="Contoh: nasi padang 22rb"
+            placeholder="Contoh: fried chicken 30rb"
             className="flex-1 rounded-2xl border border-line bg-bg px-3.5 py-2.5 text-sm outline-none focus:border-oro"
           />
           <button
@@ -143,10 +237,156 @@ export default function SettingsPage() {
           ))}
         </div>
 
+        {/* Pengingat & Shortcut jika user tidak menulis "cash"/"digital" */}
+        {pendingTx && (
+          <div className="mt-3 space-y-2.5 rounded-2xl border border-oro bg-soft p-3.5 text-xs leading-relaxed">
+            <p className="font-semibold text-terracotta">
+              💡 Kamu belum menuliskan &ldquo;cash&rdquo; atau &ldquo;digital&rdquo;.
+            </p>
+            <p className="text-ink">
+              AI mengkategorikan ini sebagai{" "}
+              <b>
+                {getCategory(pendingTx.category).emoji} {getCategory(pendingTx.category).label} ·{" "}
+                {formatRp(pendingTx.amount)}
+              </b>{" "}
+              ({pendingTx.note}). Pilih shortcut jenis saldo:
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={sending}
+                onClick={() => confirmPendingWallet("cash")}
+                className="rounded-xl bg-hero px-3 py-2.5 font-medium text-hero-ink active:scale-95"
+              >
+                💵 Cash (Tunai)
+              </button>
+              <button
+                type="button"
+                disabled={sending}
+                onClick={() => confirmPendingWallet("digital")}
+                className="rounded-xl bg-amalfi px-3 py-2.5 font-medium text-white active:scale-95"
+              >
+                💳 Saldo Digital
+              </button>
+            </div>
+          </div>
+        )}
+
         {lastReply && (
           <div className="mt-3 rounded-2xl bg-soft p-3 text-xs leading-relaxed whitespace-pre-line">
             {lastReply}
           </div>
+        )}
+      </section>
+
+      {/* ================= ADVANCED OPTIONS: BUDGET & WALLETS ================= */}
+      <section id="advanced" className="card space-y-5 p-4">
+        <div>
+          <Eyebrow>Advanced Options</Eyebrow>
+          <h2 className="mt-0.5 font-serif text-2xl">Budget &amp; Wallets</h2>
+          <p className="text-xs text-muted">
+            Tersimpan khusus untuk akun ini tanpa menghapus data transaksi yang sudah ada.
+          </p>
+        </div>
+
+        {/* Ringkasan Saldo Saat Ini */}
+        <div className="grid grid-cols-2 gap-2.5 rounded-2xl bg-soft p-3 text-xs">
+          <div>
+            <p className="text-muted">💳 Saldo Digital saat ini</p>
+            <p className="num mt-0.5 text-sm font-semibold text-amalfi">{formatRp(wallets.digital)}</p>
+          </div>
+          <div>
+            <p className="text-muted">💵 Saldo Cash saat ini</p>
+            <p className="num mt-0.5 text-sm font-semibold text-ink">{formatRp(wallets.cash)}</p>
+          </div>
+        </div>
+
+        <form onSubmit={saveAdvanced} className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Eyebrow>1 · Batas Budget Pengeluaran</Eyebrow>
+            <label className="flex items-center gap-1.5 text-xs text-muted">
+              <input
+                type="checkbox"
+                checked={autoBreak}
+                onChange={(e) => setAutoBreak(e.target.checked)}
+                className="accent-terracotta"
+              />
+              Otomatis bagi ke Mingguan &amp; Harian
+            </label>
+          </div>
+
+          <AmountInput
+            key={`m-${settings.monthlyBudget}`}
+            label="Monthly Budget (Bulanan)"
+            value={monthly}
+            onChange={handleMonthlyChange}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <AmountInput
+              key={`w-${autoBreak ? weekly : settings.weeklyBudget}`}
+              label="Weekly Budget (Mingguan)"
+              value={weekly}
+              onChange={(v) => {
+                setAutoBreak(false);
+                setWeekly(v);
+              }}
+            />
+            <AmountInput
+              key={`d-${autoBreak ? daily : settings.dailyBudget}`}
+              label="Daily Budget (Harian)"
+              value={daily}
+              onChange={(v) => {
+                setAutoBreak(false);
+                setDaily(v);
+              }}
+            />
+          </div>
+
+          <div className="rule-oro" />
+
+          <Eyebrow>2 · Penyesuaian Saldo Awal (Opsional)</Eyebrow>
+          <p className="text-xs text-muted">
+            Gunakan jika kamu ingin menyamakan saldo awal 💳 Digital dan 💵 Cash dengan isi dompetmu saat ini.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <AmountInput
+              key={`di-${settings.digitalInitial}`}
+              label="Saldo Awal 💳 Digital"
+              value={digitalInit}
+              onChange={setDigitalInit}
+            />
+            <AmountInput
+              key={`ci-${settings.cashInitial}`}
+              label="Saldo Awal 💵 Cash"
+              value={cashInit}
+              onChange={setCashInit}
+            />
+          </div>
+
+          <Button type="submit">Simpan Pengaturan Advanced</Button>
+        </form>
+
+        <div className="rule-oro" />
+
+        {/* Form Pindah Saldo (Tarik Tunai / Top-Up) */}
+        <form onSubmit={submitTransfer} className="space-y-3">
+          <Eyebrow>3 · ⇄ Pindah Saldo (Tarik Tunai ATM / Top-Up)</Eyebrow>
+          <Segmented
+            value={transferDir}
+            onChange={setTransferDir}
+            options={[
+              { value: "digital", label: "💳 Digital → 💵 Cash", activeClass: "bg-hero text-hero-ink" },
+              { value: "cash", label: "💵 Cash → 💳 Digital", activeClass: "bg-amalfi text-white" },
+            ]}
+          />
+          <AmountInput label="Nominal perpindahan" value={transferAmt} onChange={setTransferAmt} />
+          <Button type="submit" variant="ghost">
+            Pindahkan Saldo Sekarang
+          </Button>
+        </form>
+
+        {savedNotice && (
+          <p className="rounded-xl bg-soft px-3 py-2 text-center text-xs font-medium text-oliva">{savedNotice}</p>
         )}
       </section>
 
@@ -173,17 +413,9 @@ export default function SettingsPage() {
             Di aplikasi <b>Shortcuts</b>, tambah <b className="text-ink">1 aksi saja: Open URLs</b> (<i>Buka URL</i>), lalu tempel link di atas.
           </li>
           <li>
-            <i>(Atau jika memakai Ask for Input)</i>: gunakan{" "}
-            <code className="rounded bg-soft px-1 text-ink">{origin}/?quick=[Provided Input]</code>.
-          </li>
-          <li>
             <b>Penting untuk pengguna iPhone:</b> saat pertama kali Shortcut membuka Safari, <b>login 1× di Safari</b> (karena sesi login Safari dan aplikasi Home Screen terpisah di iOS).
           </li>
         </ol>
-
-        <p className="text-muted">
-          💡 <b>Tips Back Tap:</b> buka <i>Settings iPhone → Accessibility → Touch → Back Tap → Double Tap</i> lalu pilih pintasan ini.
-        </p>
       </section>
 
       {/* Status penyimpanan */}
@@ -201,8 +433,7 @@ export default function SettingsPage() {
         ) : (
           <>
             <p className="leading-relaxed text-muted">
-              Saat ini berjalan dalam <b>Demo Mode</b> (data disimpan di browser perangkat ini). Isi variabel Supabase di{" "}
-              <code className="rounded bg-soft px-1.5 py-0.5 text-xs">.env.local</code> untuk menyinkronkan ke cloud.
+              Saat ini berjalan dalam <b>Demo Mode</b> (data disimpan di browser perangkat ini).
             </p>
             <div className="grid grid-cols-2 gap-2 pt-1">
               <Button

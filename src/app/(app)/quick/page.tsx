@@ -4,29 +4,33 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
-import { parseMessageLocal, type ParsedIntent } from "@/lib/parser";
-import { todayISO } from "@/lib/format";
+import { getCategory } from "@/lib/categories";
+import { parseMessageLocal, walletLabel, type ParsedIntent } from "@/lib/parser";
+import { formatRp, todayISO } from "@/lib/format";
+import type { NewTransaction, WalletType } from "@/lib/types";
 import { Button, Eyebrow, PageHeader } from "@/components/ui";
 import { IconChevronLeft, IconShortcut } from "@/components/Icons";
 
 const QUICK_CHIPS = [
-  "nasi padang 22rb",
-  "kopi susu 18rb",
-  "ojol ke kampus 15k",
-  "uang jajan 1,5jt",
+  "fried chicken 30rb cash",
+  "kopi susu 18rb qris",
+  "ojol ke kampus 15k digital",
+  "uang jajan 1,5jt digital",
   "hutang ke Budi 50rb",
   "nabung liburan 100rb",
 ];
 
 /**
  * Halaman khusus pintasan 1-langkah (/quick).
- * Di aplikasi Shortcuts iPhone cukup pakai 1 aksi: Open URL -> https://.../quick
+ * Jika pengguna tidak menuliskan "cash" atau "digital", AI akan mengingatkan
+ * dan menampilkan 2 tombol shortcut untuk memilih Cash atau Digital.
  */
 export default function QuickCapturePage() {
   const { data, addTransaction, addDebt, addEntry } = useStore();
   const router = useRouter();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingTx, setPendingTx] = useState<NewTransaction | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
   async function submit(raw: string) {
@@ -34,6 +38,7 @@ export default function QuickCapturePage() {
     if (!trimmed || busy) return;
     setBusy(true);
     setResult(null);
+    setPendingTx(null);
     try {
       let intent: ParsedIntent;
       try {
@@ -48,6 +53,12 @@ export default function QuickCapturePage() {
       }
 
       if (intent.kind === "transaction") {
+        // Jika pengguna belum menuliskan "cash"/"digital", ingatkan & beri shortcut pilihan
+        if (!intent.walletSpecified) {
+          setPendingTx(intent.data);
+          setText("");
+          return;
+        }
         await addTransaction(intent.data);
       } else if (intent.kind === "debt") {
         await addDebt(intent.data);
@@ -62,6 +73,24 @@ export default function QuickCapturePage() {
       }
       setText("");
       setResult(intent.reply.replace(/[*_]/g, ""));
+    } catch (err) {
+      setResult(`Gagal menyimpan: ${err instanceof Error ? err.message : "Terjadi kesalahan"}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveWithWallet(wallet: WalletType) {
+    if (!pendingTx || busy) return;
+    setBusy(true);
+    try {
+      const finalTx: NewTransaction = { ...pendingTx, wallet };
+      await addTransaction(finalTx);
+      const cat = getCategory(finalTx.category);
+      setPendingTx(null);
+      setResult(
+        `✅ Tercatat (${finalTx.type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(wallet)})\n${cat.emoji} ${cat.label} · ${formatRp(finalTx.amount)}\n${finalTx.note ?? ""}`,
+      );
     } catch (err) {
       setResult(`Gagal menyimpan: ${err instanceof Error ? err.message : "Terjadi kesalahan"}`);
     } finally {
@@ -100,7 +129,7 @@ export default function QuickCapturePage() {
           autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Contoh: nasi padang 22rb"
+          placeholder="Contoh: fried chicken 30rb cash"
           className="w-full rounded-2xl border border-line bg-bg px-4 py-3.5 text-base outline-none focus:border-oro"
         />
 
@@ -118,9 +147,44 @@ export default function QuickCapturePage() {
         </div>
 
         <Button type="submit" disabled={busy || !text.trim()}>
-          {busy ? "Menyimpan…" : "Simpan ke Bilancio"}
+          {busy ? "Memproses…" : "Simpan ke Bilancio"}
         </Button>
       </form>
+
+      {/* Pengingat & Shortcut jika user belum menulis "cash"/"digital" */}
+      {pendingTx && (
+        <div className="card space-y-3 border-oro p-4 text-xs leading-relaxed">
+          <p className="font-semibold text-terracotta">
+            💡 Kamu belum menuliskan jenis saldo (&ldquo;cash&rdquo; / &ldquo;digital&rdquo;).
+          </p>
+          <p className="text-ink">
+            AI mengenali transaksi ini sebagai{" "}
+            <b>
+              {getCategory(pendingTx.category).emoji} {getCategory(pendingTx.category).label} ·{" "}
+              {formatRp(pendingTx.amount)}
+            </b>{" "}
+            ({pendingTx.note}). Pilih shortcut jenis saldo untuk menyimpannya:
+          </p>
+          <div className="grid grid-cols-2 gap-2.5 pt-1">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => saveWithWallet("cash")}
+              className="rounded-2xl bg-hero px-3 py-3 text-sm font-medium text-hero-ink active:scale-95"
+            >
+              💵 Cash (Tunai)
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => saveWithWallet("digital")}
+              className="rounded-2xl bg-amalfi px-3 py-3 text-sm font-medium text-white active:scale-95"
+            >
+              💳 Saldo Digital
+            </button>
+          </div>
+        </div>
+      )}
 
       {result && (
         <div className="card space-y-3 border-oliva p-4 text-sm leading-relaxed">

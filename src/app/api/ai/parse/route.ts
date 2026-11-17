@@ -1,6 +1,14 @@
-import { buildParsePrompt, parseMessageLocal, type ParsedIntent } from "@/lib/parser";
+import {
+  buildParsePrompt,
+  detectWallet,
+  parseMessageLocal,
+  refineCategoryWithKeywords,
+  walletLabel,
+  type ParsedIntent,
+} from "@/lib/parser";
 import { getCategory } from "@/lib/categories";
 import { formatRp, todayISO } from "@/lib/format";
+import type { WalletType } from "@/lib/types";
 import { callGemini } from "@/lib/gemini";
 
 /** Mem-parse pesan menggunakan Gemini jika tersedia, atau parser lokal sebagai cadangan. */
@@ -18,12 +26,29 @@ async function parseWithAI(message: string, source: "app" | "shortcut" = "shortc
 
     if (parsed.kind === "transaction" && Number.isFinite(amount) && amount > 0) {
       const type = parsed.type === "income" ? "income" : "expense";
-      const cat = getCategory(String(parsed.category ?? "lainnya"));
+      const refinedCatId = refineCategoryWithKeywords(message, type, String(parsed.category ?? "lainnya"));
+      const cat = getCategory(refinedCatId);
+
+      // Periksa apakah user menyebutkan cash/digital (baik dari deteksi AI maupun regex lokal)
+      const localWallet = detectWallet(message);
+      const aiWallet = parsed.wallet === "cash" || parsed.wallet === "digital" ? (parsed.wallet as WalletType) : null;
+      const walletSpecified = Boolean(aiWallet || localWallet.specified);
+      const wallet: WalletType = aiWallet ?? localWallet.wallet;
+
       const note = String(parsed.note ?? "").trim() || cat.label;
       return {
         kind: "transaction",
-        data: { type, amount: Math.round(amount), category: cat.id, note, date: todayISO(), source },
-        reply: `✅ *Tercatat (${type === "income" ? "Pemasukan" : "Pengeluaran"})*\n${cat.emoji} ${cat.label} · ${formatRp(amount)}\n_${note}_`,
+        data: {
+          type,
+          amount: Math.round(amount),
+          category: cat.id,
+          note,
+          date: todayISO(),
+          source,
+          wallet,
+        },
+        walletSpecified,
+        reply: `✅ *Tercatat (${type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(wallet)})*\n${cat.emoji} ${cat.label} · ${formatRp(amount)}\n_${note}_`,
       };
     }
 

@@ -34,13 +34,14 @@ export function TransactionRow({
 }) {
   const c = getCategory(tx.category);
   const income = tx.type === "income";
+  const isCash = tx.wallet === "cash";
   return (
     <button onClick={onClick} className="flex w-full items-center gap-3 py-3 text-left active:opacity-60">
       <CategoryBadge id={tx.category} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{tx.note || c.label}</p>
         <p className="truncate text-xs text-muted">
-          {c.label}
+          {c.label} · {isCash ? "💵 Cash" : "💳 Digital"}
           {showDate && ` · ${formatShortDate(tx.date)}`}
           {tx.source === "shortcut" && " · via Shortcut"}
         </p>

@@ -86,6 +86,14 @@ export default function InsightsPage() {
                 </p>
               </div>
             </div>
+            <div className="mt-4 flex w-full justify-between rounded-2xl bg-soft px-4 py-2.5 text-xs">
+              <span>
+                💳 Digital: <b className="num text-amalfi">{formatRp(a.digitalExpense)}</b>
+              </span>
+              <span>
+                💵 Cash: <b className="num">{formatRp(a.cashExpense)}</b>
+              </span>
+            </div>
           </section>
 
           {/* Rincian per kategori */}

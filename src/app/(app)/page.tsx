@@ -4,17 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { useShell } from "@/components/AppShell";
-import { analyze, localSummary, netBalance, totalDebt, totalSavings } from "@/lib/finance";
+import {
+  analyze,
+  budgetOverview,
+  localSummary,
+  totalDebt,
+  totalSavings,
+  walletBalances,
+  type BudgetBar,
+} from "@/lib/finance";
 import { formatCompact, formatMonthTitle, formatRp, greeting, todayISO } from "@/lib/format";
-import { parseMessageLocal, type ParsedIntent } from "@/lib/parser";
-import { EmptyState, Eyebrow, PageHeader } from "@/components/ui";
+import { getCategory } from "@/lib/categories";
+import { parseMessageLocal, walletLabel, type ParsedIntent } from "@/lib/parser";
+import type { NewTransaction, WalletType } from "@/lib/types";
+import { Sheet } from "@/components/Sheet";
+import { AmountInput, Button, EmptyState, Eyebrow, PageHeader, ProgressBar, Segmented } from "@/components/ui";
 import { TransactionRow } from "@/components/TransactionRow";
 import { IconChevron, IconShare, IconSparkle } from "@/components/Icons";
 
 export default function HomePage() {
-  const { data, mode, session, addTransaction, addDebt, addEntry } = useStore();
+  const { data, settings, mode, session, addTransaction, addDebt, addEntry, transferWallet } = useStore();
   const { openNew, openEdit } = useShell();
   const [quickNotice, setQuickNotice] = useState<string | null>(null);
+  const [pendingTx, setPendingTx] = useState<NewTransaction | null>(null);
+  const [transferOpen, setTransferOpen] = useState(false);
   const handledQuick = useRef(false);
 
   // Mendukung input cepat dari iOS Shortcut via URL: /?quick=nasi+padang+22rb
@@ -34,9 +47,15 @@ export default function HomePage() {
       .then((r) => (r.ok ? (r.json() as Promise<ParsedIntent>) : parseMessageLocal(q, "shortcut")))
       .catch(() => parseMessageLocal(q, "shortcut"))
       .then(async (intent) => {
-        if (intent.kind === "transaction") await addTransaction(intent.data);
-        else if (intent.kind === "debt") await addDebt(intent.data);
-        else if (intent.kind === "savings" && data.goals[0]) {
+        if (intent.kind === "transaction") {
+          if (!intent.walletSpecified) {
+            setPendingTx(intent.data);
+            return;
+          }
+          await addTransaction(intent.data);
+        } else if (intent.kind === "debt") {
+          await addDebt(intent.data);
+        } else if (intent.kind === "savings" && data.goals[0]) {
           const hint = intent.goalHint.toLowerCase();
           const goal = data.goals.find((g) => g.name.toLowerCase().includes(hint)) ?? data.goals[0];
           await addEntry({ goal_id: goal.id, amount: intent.amount, date: todayISO(), note: "via Shortcut" });
@@ -46,7 +65,23 @@ export default function HomePage() {
       .catch((err) => setQuickNotice(`Gagal menyimpan: ${err instanceof Error ? err.message : "Terjadi kesalahan"}`));
   }, [addTransaction, addDebt, addEntry, data.goals]);
 
-  const balance = netBalance(data);
+  async function confirmPendingWallet(wallet: WalletType) {
+    if (!pendingTx) return;
+    const tx: NewTransaction = { ...pendingTx, wallet };
+    setPendingTx(null);
+    try {
+      await addTransaction(tx);
+      const cat = getCategory(tx.category);
+      setQuickNotice(
+        `✅ Tercatat (${tx.type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(wallet)})\n${cat.emoji} ${cat.label} · ${formatRp(tx.amount)} (${tx.note})`,
+      );
+    } catch (err) {
+      setQuickNotice(`Gagal menyimpan: ${err instanceof Error ? err.message : "Terjadi kesalahan"}`);
+    }
+  }
+
+  const wallets = walletBalances(data, settings);
+  const budgets = budgetOverview(data, settings);
   const month = analyze(data, "month");
   const debtOwe = totalDebt(data, "owe");
   const debtOwed = totalDebt(data, "owed");
@@ -71,6 +106,39 @@ export default function HomePage() {
         }
       />
 
+      {/* Pengingat jika Quick Input belum menyertakan cash / digital */}
+      {pendingTx && (
+        <div className="card space-y-3 border-oro p-4 text-xs">
+          <p className="font-medium text-terracotta">
+            💡 Kamu belum menuliskan jenis saldo (&ldquo;cash&rdquo; / &ldquo;digital&rdquo;).
+          </p>
+          <p className="text-ink">
+            Pilih shortcut jenis saldo untuk menyimpan{" "}
+            <b>
+              {getCategory(pendingTx.category).emoji} {getCategory(pendingTx.category).label} ·{" "}
+              {formatRp(pendingTx.amount)}
+            </b>{" "}
+            ({pendingTx.note}):
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => confirmPendingWallet("cash")}
+              className="rounded-2xl bg-hero px-3 py-2.5 font-medium text-hero-ink active:scale-95"
+            >
+              💵 Cash (Tunai)
+            </button>
+            <button
+              type="button"
+              onClick={() => confirmPendingWallet("digital")}
+              className="rounded-2xl bg-amalfi px-3 py-2.5 font-medium text-white active:scale-95"
+            >
+              💳 Saldo Digital
+            </button>
+          </div>
+        </div>
+      )}
+
       {quickNotice && (
         <div className="card flex items-start justify-between gap-3 border-oliva p-3.5 text-xs leading-relaxed">
           <span className="whitespace-pre-line">{quickNotice}</span>
@@ -89,23 +157,68 @@ export default function HomePage() {
         </Link>
       )}
 
-      {/* Kartu lengkung utama */}
-      <section className="arch bg-hero px-6 pt-9 pb-6 text-center text-hero-ink shadow-[0_20px_40px_-20px_rgba(43,33,28,0.55)]">
+      {/* Kartu lengkung utama + pembagian Saldo Cash & Digital */}
+      <section className="arch bg-hero px-6 pt-9 pb-5 text-center text-hero-ink shadow-[0_20px_40px_-20px_rgba(43,33,28,0.55)]">
         <p className="text-xs uppercase tracking-[0.26em] opacity-70">Net Balance</p>
-        <p className="num mt-1.5 font-serif text-4xl">{formatRp(balance)}</p>
-        <div className="rule-oro my-4 opacity-60" />
-        <div className="flex justify-around text-xs">
+        <p className="num mt-1.5 font-serif text-4xl">{formatRp(wallets.total)}</p>
+
+        {/* Rincian Saldo Digital vs Cash */}
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-white/8 px-3 py-2.5 text-left text-xs">
+          <div>
+            <p className="opacity-70">💳 Digital</p>
+            <p className="num mt-0.5 font-semibold">{formatRp(wallets.digital)}</p>
+          </div>
+          <div className="border-l border-white/15 pl-3">
+            <p className="opacity-70">💵 Cash</p>
+            <p className="num mt-0.5 font-semibold">{formatRp(wallets.cash)}</p>
+          </div>
+        </div>
+
+        <div className="rule-oro my-3.5 opacity-60" />
+        <div className="flex items-center justify-around text-xs">
           <button onClick={() => openNew("income")} className="active:opacity-70">
-            <span className="text-[#a7b56e]">▲</span> Income{" "}
-            <b className="num">{formatCompact(month.income)}</b>
+            <span className="text-[#a7b56e]">▲</span> Income <b className="num">{formatCompact(month.income)}</b>
           </button>
           <span className="opacity-30">|</span>
           <button onClick={() => openNew("expense")} className="active:opacity-70">
-            <span className="text-[#e58b6b]">▼</span> Expense{" "}
-            <b className="num">{formatCompact(month.expense)}</b>
+            <span className="text-[#e58b6b]">▼</span> Expense <b className="num">{formatCompact(month.expense)}</b>
+          </button>
+          <span className="opacity-30">|</span>
+          <button onClick={() => setTransferOpen(true)} className="opacity-85 active:opacity-60">
+            ⇄ Pindah
           </button>
         </div>
       </section>
+
+      {/* Kartu Kontrol Budget (Harian, Mingguan, Bulanan) */}
+      {budgets.hasAnyBudget ? (
+        <section className="card space-y-3 p-4">
+          <div className="flex items-center justify-between">
+            <Eyebrow>Budget Control</Eyebrow>
+            <Link href="/settings#advanced" className="text-xs font-medium text-terracotta">
+              Edit Budget →
+            </Link>
+          </div>
+
+          <div className="space-y-2.5">
+            {budgets.daily.limit > 0 && <BudgetRow bar={budgets.daily} />}
+            {budgets.weekly.limit > 0 && <BudgetRow bar={budgets.weekly} />}
+            {budgets.monthly.limit > 0 && <BudgetRow bar={budgets.monthly} />}
+          </div>
+
+          {budgets.safeDailyAllowance !== null && (
+            <p className="rounded-xl bg-soft px-3 py-2 text-xs text-muted">
+              💡 Jatah aman untuk {budgets.remainingDaysInMonth} hari sisa bulan ini:{" "}
+              <b className="num text-ink">{formatRp(budgets.safeDailyAllowance)}/hari</b>
+            </p>
+          )}
+        </section>
+      ) : (
+        <Link href="/settings#advanced" className="card flex items-center justify-between px-4 py-3 text-xs">
+          <span>🎯 Atur batas budget Harian, Mingguan, &amp; Bulanan</span>
+          <span className="font-medium text-terracotta">Advanced →</span>
+        </Link>
+      )}
 
       {/* Kartu ringkas Hutang & Tabungan */}
       <div className="grid grid-cols-2 gap-3">
@@ -154,11 +267,74 @@ export default function HomePage() {
       </section>
 
       <InstallPrompt />
+
+      {/* Sheet Pindah Saldo Cash <-> Digital */}
+      <Sheet
+        open={transferOpen}
+        onClose={() => setTransferOpen(false)}
+        title="Pindah Saldo Dompet"
+        subtitle="Tarik tunai ATM atau setor/top-up tanpa dihitung pengeluaran"
+      >
+        <TransferForm
+          onSave={async (from, amt) => {
+            await transferWallet(from, amt);
+            setTransferOpen(false);
+          }}
+        />
+      </Sheet>
     </div>
   );
 }
 
-/** Petunjuk memasang PWA ke layar utama iPhone (hanya muncul di iOS jika belum terpasang). */
+function BudgetRow({ bar }: { bar: BudgetBar }) {
+  const over = bar.spent > bar.limit;
+  const warn = bar.ratio >= 0.75 && !over;
+  const color = over ? "var(--terracotta)" : warn ? "var(--limone-fill)" : "var(--oliva)";
+  return (
+    <div className="space-y-1 text-xs">
+      <div className="flex justify-between">
+        <span className="font-medium">
+          {bar.label}{" "}
+          <span className="text-muted font-normal">
+            ({Math.round(bar.ratio * 100)}%)
+          </span>
+        </span>
+        <span className="num">
+          <b className={over ? "text-terracotta" : ""}>{formatCompact(bar.spent)}</b>{" "}
+          <span className="text-muted">/ {formatCompact(bar.limit)}</span>
+        </span>
+      </div>
+      <ProgressBar value={bar.ratio} color={color} />
+    </div>
+  );
+}
+
+function TransferForm({ onSave }: { onSave: (from: WalletType, amount: number) => Promise<void> }) {
+  const [from, setFrom] = useState<WalletType>("digital");
+  const [amount, setAmount] = useState(0);
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (amount <= 0) return;
+        onSave(from, amount);
+      }}
+      className="space-y-4 pb-2"
+    >
+      <Segmented
+        value={from}
+        onChange={setFrom}
+        options={[
+          { value: "digital", label: "💳 Digital → 💵 Cash (Tarik ATM)", activeClass: "bg-hero text-hero-ink" },
+          { value: "cash", label: "💵 Cash → 💳 Digital (Top-Up)", activeClass: "bg-amalfi text-white" },
+        ]}
+      />
+      <AmountInput label="Nominal yang dipindahkan" value={amount} onChange={setAmount} autoFocus large />
+      <Button type="submit">Simpan perpindahan saldo</Button>
+    </form>
+  );
+}
+
 function InstallPrompt() {
   const [show, setShow] = useState(false);
 

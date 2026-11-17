@@ -1,4 +1,5 @@
 export type TxType = "income" | "expense";
+export type WalletType = "cash" | "digital";
 
 export interface Transaction {
   id: string;
@@ -11,6 +12,8 @@ export interface Transaction {
   /** Format YYYY-MM-DD */
   date: string;
   source: "app" | "shortcut";
+  /** Jenis saldo yang dipakai: uang tunai ('cash') atau bank/e-wallet ('digital'). */
+  wallet: WalletType;
   created_at: string;
 }
 
@@ -48,6 +51,33 @@ export interface SavingsEntry {
   note: string | null;
   created_at: string;
 }
+
+export interface BudgetSettings {
+  /** Batas pengeluaran bulanan (0 = tidak aktif). */
+  monthlyBudget: number;
+  /** Batas pengeluaran mingguan (0 = tidak aktif). */
+  weeklyBudget: number;
+  /** Batas pengeluaran harian (0 = tidak aktif). */
+  dailyBudget: number;
+  /** Jika true, mengisi budget bulanan otomatis membagi ke mingguan & harian. */
+  autoBreakdown: boolean;
+  /** Saldo awal dompet tunai (Cash). */
+  cashInitial: number;
+  /** Saldo awal dompet digital (Bank / E-Wallet). */
+  digitalInitial: number;
+  /** Akumulasi pindah saldo bersih dari Digital ke Cash (positif = tarik tunai ke Cash). */
+  netTransferToCash: number;
+}
+
+export const DEFAULT_SETTINGS: BudgetSettings = {
+  monthlyBudget: 0,
+  weeklyBudget: 0,
+  dailyBudget: 0,
+  autoBreakdown: true,
+  cashInitial: 0,
+  digitalInitial: 0,
+  netTransferToCash: 0,
+};
 
 export interface AppData {
   transactions: Transaction[];

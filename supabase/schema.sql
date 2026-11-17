@@ -13,11 +13,13 @@ create table if not exists public.transactions (
   note        text,
   date        date not null default current_date,
   source      text not null default 'app' check (source in ('app', 'shortcut', 'whatsapp')),
+  wallet      text not null default 'digital' check (wallet in ('cash', 'digital')),
   created_at  timestamptz not null default now()
 );
--- Jika tabel sudah terlanjur dibuat sebelumnya, perbarui constraint source:
+-- Migrasi aman untuk tabel yang sudah ada (tidak menghapus data):
 alter table public.transactions drop constraint if exists transactions_source_check;
 alter table public.transactions add constraint transactions_source_check check (source in ('app', 'shortcut', 'whatsapp'));
+alter table public.transactions add column if not exists wallet text not null default 'digital' check (wallet in ('cash', 'digital'));
 create index if not exists transactions_user_date_idx on public.transactions (user_id, date desc);
 
 -- ---------- Hutang / piutang ----------

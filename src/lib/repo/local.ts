@@ -1,4 +1,4 @@
-import type { AppData } from "../types";
+import type { AppData, WalletType } from "../types";
 import { toISODate, uid } from "../format";
 import type { Repo } from "./types";
 
@@ -22,6 +22,7 @@ export function demoData(): AppData {
     category: string,
     note: string,
     ago: number,
+    wallet: WalletType = "digital",
   ) => ({
     id: uid(),
     type,
@@ -30,6 +31,7 @@ export function demoData(): AppData {
     note,
     date: daysAgo(ago),
     source: "app" as const,
+    wallet,
     created_at: now(),
   });
 
@@ -38,25 +40,25 @@ export function demoData(): AppData {
 
   return {
     transactions: [
-      tx("income", 1_500_000, "uang_jajan", "Uang jajan bulan ini", 20),
-      tx("income", 250_000, "lainnya_masuk", "Jual buku bekas", 9),
-      tx("expense", 18_000, "makan", "Kopi susu", 0),
-      tx("expense", 22_000, "makan", "Nasi padang", 0),
-      tx("expense", 15_000, "transportasi", "Ojol ke kampus", 1),
-      tx("expense", 35_000, "makan", "Makan malam bareng teman", 1),
-      tx("expense", 120_000, "belanja", "Kaos", 3),
-      tx("expense", 50_000, "tagihan", "Paket data", 4),
-      tx("expense", 45_000, "hiburan", "Nonton bioskop", 5),
-      tx("expense", 75_000, "pendidikan", "Fotokopi & print tugas", 6),
-      tx("expense", 28_000, "makan", "Seblak + es teh", 7),
-      tx("expense", 20_000, "transportasi", "Bensin", 8),
-      tx("expense", 32_000, "makan", "Ayam geprek", 10),
-      tx("expense", 25_000, "kesehatan", "Obat flu", 12),
-      tx("expense", 40_000, "makan", "Martabak", 14),
-      tx("expense", 60_000, "belanja", "Alat tulis", 16),
-      tx("expense", 30_000, "makan", "Bakso", 36),
-      tx("expense", 90_000, "belanja", "Sandal", 40),
-      tx("income", 1_500_000, "uang_jajan", "Uang jajan bulan lalu", 50),
+      tx("income", 1_500_000, "uang_jajan", "Uang jajan bulan ini", 20, "digital"),
+      tx("income", 250_000, "lainnya_masuk", "Jual buku bekas", 9, "cash"),
+      tx("expense", 18_000, "makan", "Kopi susu", 0, "digital"),
+      tx("expense", 22_000, "makan", "Nasi padang", 0, "cash"),
+      tx("expense", 15_000, "transportasi", "Ojol ke kampus", 1, "digital"),
+      tx("expense", 35_000, "makan", "Makan malam bareng teman", 1, "digital"),
+      tx("expense", 120_000, "belanja", "Kaos", 3, "digital"),
+      tx("expense", 50_000, "tagihan", "Paket data", 4, "digital"),
+      tx("expense", 45_000, "hiburan", "Nonton bioskop", 5, "digital"),
+      tx("expense", 75_000, "pendidikan", "Fotokopi & print tugas", 6, "cash"),
+      tx("expense", 28_000, "makan", "Seblak + es teh", 7, "cash"),
+      tx("expense", 20_000, "transportasi", "Bensin", 8, "cash"),
+      tx("expense", 32_000, "makan", "Ayam geprek", 10, "cash"),
+      tx("expense", 25_000, "kesehatan", "Obat flu", 12, "cash"),
+      tx("expense", 40_000, "makan", "Martabak", 14, "digital"),
+      tx("expense", 60_000, "belanja", "Alat tulis", 16, "cash"),
+      tx("expense", 30_000, "makan", "Bakso", 36, "cash"),
+      tx("expense", 90_000, "belanja", "Sandal", 40, "digital"),
+      tx("income", 1_500_000, "uang_jajan", "Uang jajan bulan lalu", 50, "digital"),
     ],
     debts: [
       {
@@ -107,12 +109,22 @@ export function demoData(): AppData {
   };
 }
 
+function normalize(data: AppData): AppData {
+  return {
+    ...data,
+    transactions: (data.transactions ?? []).map((t) => ({
+      ...t,
+      wallet: t.wallet === "cash" ? "cash" : "digital",
+    })),
+  };
+}
+
 function read(): AppData {
   if (typeof window === "undefined") return { transactions: [], debts: [], goals: [], entries: [] };
   const raw = window.localStorage.getItem(KEY);
   if (raw) {
     try {
-      return JSON.parse(raw) as AppData;
+      return normalize(JSON.parse(raw) as AppData);
     } catch {
       /* data rusak, buat ulang */
     }
@@ -145,7 +157,7 @@ export const localRepo: Repo = {
 
   async addTransaction(t) {
     return mutate((d) => {
-      const row = { ...t, id: uid(), created_at: now() };
+      const row = { ...t, wallet: t.wallet ?? "digital", id: uid(), created_at: now() };
       d.transactions.unshift(row);
       return row;
     });
