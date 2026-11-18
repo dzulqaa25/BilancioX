@@ -83,7 +83,7 @@ export interface BudgetBar {
   spent: number;
   limit: number;
   remaining: number;
-  ratio: number; // 0..∞
+  ratio: number;
 }
 
 export interface BudgetOverview {
@@ -91,7 +91,6 @@ export interface BudgetOverview {
   daily: BudgetBar;
   weekly: BudgetBar;
   monthly: BudgetBar;
-  /** Jatah aman per hari untuk sisa hari di bulan ini (null jika budget bulanan belum diatur). */
   safeDailyAllowance: number | null;
   remainingDaysInMonth: number;
 }
@@ -99,8 +98,7 @@ export interface BudgetOverview {
 export function budgetOverview(data: AppData, settings: BudgetSettings, ref = new Date()): BudgetOverview {
   const todayStr = toISODate(ref);
 
-  // Rentang minggu ini (Senin s/d Minggu)
-  const dayOfWeek = (ref.getDay() + 6) % 7; // 0 = Senin, 6 = Minggu
+  const dayOfWeek = (ref.getDay() + 6) % 7;
   const mon = new Date(ref);
   mon.setDate(ref.getDate() - dayOfWeek);
   const sun = new Date(mon);
@@ -108,7 +106,6 @@ export function budgetOverview(data: AppData, settings: BudgetSettings, ref = ne
   const weekStart = toISODate(mon);
   const weekEnd = toISODate(sun);
 
-  // Rentang bulan ini
   const y = ref.getFullYear();
   const m = ref.getMonth();
   const monthStart = toISODate(new Date(y, m, 1));
@@ -150,7 +147,6 @@ export function budgetOverview(data: AppData, settings: BudgetSettings, ref = ne
     ratio: limit > 0 ? spent / limit : 0,
   });
 
-  // Pengeluaran bulan ini SEBELUM hari ini, untuk menghitung sisa jatah aman mulai hari ini
   const spentBeforeToday = Math.max(0, monthSpent - todaySpent);
   const safeDailyAllowance =
     monthlyLimit > 0 ? Math.max(0, Math.round((monthlyLimit - spentBeforeToday) / remainingDaysInMonth)) : null;
@@ -166,15 +162,19 @@ export function budgetOverview(data: AppData, settings: BudgetSettings, ref = ne
 }
 
 // ---------------------------------------------------------------------
-// Periode
+// Periode & Rentang Tanggal Fleksibel
 // ---------------------------------------------------------------------
 
-export type Period = "month" | "3months" | "year";
+export type Period = "7days" | "month" | "3months" | "6months" | "year" | "all" | "custom";
 
 export const PERIOD_LABEL: Record<Period, string> = {
+  "7days": "7 Days",
   month: "This Month",
   "3months": "3 Months",
+  "6months": "6 Months",
   year: "This Year",
+  all: "All Time",
+  custom: "Custom",
 };
 
 export interface Range {
@@ -182,20 +182,51 @@ export interface Range {
   end: string;
 }
 
-export function periodRange(period: Period, ref = new Date()): Range {
+export function periodRange(period: Period, ref = new Date(), custom?: Range): Range {
+  if (period === "custom" && custom) {
+    return custom.start <= custom.end ? custom : { start: custom.end, end: custom.start };
+  }
   const y = ref.getFullYear();
   const m = ref.getMonth();
+  const today = toISODate(ref);
+
+  if (period === "7days") {
+    const d = new Date(ref);
+    d.setDate(d.getDate() - 6);
+    return { start: toISODate(d), end: today };
+  }
   if (period === "month") return { start: toISODate(new Date(y, m, 1)), end: toISODate(new Date(y, m + 1, 0)) };
   if (period === "3months") return { start: toISODate(new Date(y, m - 2, 1)), end: toISODate(new Date(y, m + 1, 0)) };
-  return { start: toISODate(new Date(y, 0, 1)), end: toISODate(new Date(y, 11, 31)) };
+  if (period === "6months") return { start: toISODate(new Date(y, m - 5, 1)), end: toISODate(new Date(y, m + 1, 0)) };
+  if (period === "year") return { start: toISODate(new Date(y, 0, 1)), end: toISODate(new Date(y, 11, 31)) };
+  return { start: "2000-01-01", end: "2099-12-31" };
 }
 
-export function previousRange(period: Period, ref = new Date()): Range {
+export function previousRange(period: Period, ref = new Date(), custom?: Range): Range | null {
   const y = ref.getFullYear();
   const m = ref.getMonth();
+  if (period === "7days") {
+    const end = new Date(ref);
+    end.setDate(end.getDate() - 7);
+    const start = new Date(ref);
+    start.setDate(start.getDate() - 13);
+    return { start: toISODate(start), end: toISODate(end) };
+  }
   if (period === "month") return periodRange("month", new Date(y, m - 1, 1));
   if (period === "3months") return periodRange("3months", new Date(y, m - 3, 1));
-  return periodRange("year", new Date(y - 1, 0, 1));
+  if (period === "6months") return periodRange("6months", new Date(y, m - 6, 1));
+  if (period === "year") return periodRange("year", new Date(y - 1, 0, 1));
+  if (period === "custom" && custom) {
+    const s = parseISODate(custom.start);
+    const e = parseISODate(custom.end);
+    const diffDays = Math.max(1, Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1);
+    const prevEnd = new Date(s);
+    prevEnd.setDate(prevEnd.getDate() - 1);
+    const prevStart = new Date(prevEnd);
+    prevStart.setDate(prevStart.getDate() - (diffDays - 1));
+    return { start: toISODate(prevStart), end: toISODate(prevEnd) };
+  }
+  return null;
 }
 
 export function inRange(txs: Transaction[], r: Range): Transaction[] {
@@ -237,6 +268,7 @@ export function byCategory(txs: Transaction[]): CategoryStat[] {
 export interface Analysis {
   period: Period;
   range: Range;
+  transactions: Transaction[];
   income: number;
   expense: number;
   cashExpense: number;
@@ -250,14 +282,19 @@ export interface Analysis {
   txCount: number;
 }
 
-export function analyze(data: AppData, period: Period, ref = new Date()): Analysis {
-  const range = periodRange(period, ref);
+export function analyze(data: AppData, period: Period, ref = new Date(), customRange?: Range): Analysis {
+  const range = periodRange(period, ref, customRange);
   const txs = inRange(data.transactions, range);
-  const prev = inRange(data.transactions, previousRange(period, ref));
+  const prevR = previousRange(period, ref, customRange);
+  const prev = prevR ? inRange(data.transactions, prevR) : [];
   const expense = sumBy(txs, "expense");
   const prevExpense = sumBy(prev, "expense");
 
-  const start = parseISODate(range.start);
+  let start = parseISODate(range.start);
+  if (period === "all" && txs.length > 0) {
+    const oldest = txs.reduce((min, t) => (t.date < min ? t.date : min), txs[0].date);
+    start = parseISODate(oldest);
+  }
   const endDate = parseISODate(range.end) < ref ? parseISODate(range.end) : ref;
   const days = Math.max(1, Math.round((endDate.getTime() - start.getTime()) / 86_400_000) + 1);
 
@@ -271,6 +308,7 @@ export function analyze(data: AppData, period: Period, ref = new Date()): Analys
   return {
     period,
     range,
+    transactions: txs,
     income: sumBy(txs, "income"),
     expense,
     cashExpense,
@@ -290,7 +328,7 @@ const pct = (n: number) => `${Math.round(n * 100)}%`;
 export function localSummary(a: Analysis): string[] {
   const out: string[] = [];
   if (a.expense === 0) {
-    out.push("Belum ada pengeluaran di periode ini. Catat transaksi pertamamu lewat tombol + atau iOS Shortcut.");
+    out.push("Belum ada pengeluaran di periode ini. Catat transaksi pertamamu lewat tombol + atau Quick Input.");
     return out;
   }
   const top = a.categories[0];
@@ -304,11 +342,11 @@ export function localSummary(a: Analysis): string[] {
     const ch = a.expenseChange;
     if (Math.abs(ch) < 0.05) out.push("Pengeluaranmu relatif stabil dibanding periode sebelumnya.");
     else if (ch > 0) out.push(`Pengeluaran naik ${pct(ch)} dibanding periode sebelumnya. Coba cek lagi pos yang membengkak.`);
-    else out.push(`Mantap! Pengeluaran turun ${pct(-ch)} dibanding periode sebelumnya.`);
+    else out.push(`Pengeluaran turun ${pct(-ch)} dibanding periode sebelumnya.`);
   }
   if (a.income > 0) {
     const ratio = a.expense / a.income;
-    if (ratio > 1) out.push(`Pengeluaran sudah melebihi pemasukan (${pct(ratio)} dari uang jajan). Saatnya rem sedikit.`);
+    if (ratio > 1) out.push(`Pengeluaran sudah melebihi pemasukan (${pct(ratio)} dari pemasukan). Saatnya rem sedikit.`);
     else out.push(`Kamu sudah memakai ${pct(ratio)} dari pemasukan; sisa ${formatRp(a.income - a.expense)}.`);
   }
   if (a.weekendShare > 0.45) {

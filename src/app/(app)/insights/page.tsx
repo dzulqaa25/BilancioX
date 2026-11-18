@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
+import { useShell } from "@/components/AppShell";
 import {
   analyze,
   analysisPayload,
@@ -10,19 +11,32 @@ import {
   type CategoryStat,
   type Period,
 } from "@/lib/finance";
-import { formatCompact, formatRp, formatShortDate } from "@/lib/format";
+import { formatCompact, formatRp, formatShortDate, todayISO, toISODate } from "@/lib/format";
 import { getCategory } from "@/lib/categories";
-import { Button, Chip, EmptyState, Eyebrow, PageHeader, ProgressBar } from "@/components/ui";
-import { CategoryBadge } from "@/components/TransactionRow";
-import { IconCash, IconDigital, IconSparkle } from "@/components/Icons";
+import { Button, Chip, EmptyState, Eyebrow, PageHeader, ProgressBar, TextField } from "@/components/ui";
+import { CategoryBadge, TransactionRow } from "@/components/TransactionRow";
+import { IconCash, IconChevron, IconDigital, IconSparkle } from "@/components/Icons";
+
+const PERIODS: Period[] = ["7days", "month", "3months", "6months", "year", "all", "custom"];
+
+function defaultMonthStart(): string {
+  const d = new Date();
+  return toISODate(new Date(d.getFullYear(), d.getMonth(), 1));
+}
 
 export default function InsightsPage() {
   const { data } = useStore();
+  const { openEdit } = useShell();
   const [period, setPeriod] = useState<Period>("month");
+  const [customStart, setCustomStart] = useState<string>(defaultMonthStart);
+  const [customEnd, setCustomEnd] = useState<string>(todayISO);
   const [aiText, setAiText] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
-  const a = useMemo(() => analyze(data, period), [data, period]);
+  const a = useMemo(
+    () => analyze(data, period, new Date(), { start: customStart, end: customEnd }),
+    [data, period, customStart, customEnd],
+  );
   const tips = useMemo(() => localSummary(a), [a]);
 
   async function askGemini() {
@@ -44,10 +58,11 @@ export default function InsightsPage() {
 
   return (
     <div className="animate-rise space-y-5">
-      <PageHeader eyebrow="Ringkasan & pola pengeluaran" title="Insights" />
+      <PageHeader eyebrow="Analisis & riwayat periode" title="Insights" />
 
-      <div className="flex gap-2">
-        {(["month", "3months", "year"] as Period[]).map((p) => (
+      {/* Pemilih Periode Fleksibel */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {PERIODS.map((p) => (
           <Chip
             key={p}
             active={period === p}
@@ -61,8 +76,32 @@ export default function InsightsPage() {
         ))}
       </div>
 
-      {a.expense === 0 ? (
-        <EmptyState title="Belum ada pengeluaran" hint="Setelah kamu mencatat pengeluaran, grafik dan analisis akan muncul di sini." />
+      {/* Rentang Tanggal Kustom */}
+      {period === "custom" && (
+        <div className="card grid grid-cols-2 gap-3 p-4">
+          <TextField
+            label="From"
+            type="date"
+            value={customStart}
+            onChange={(e) => {
+              setCustomStart(e.target.value);
+              setAiText(null);
+            }}
+          />
+          <TextField
+            label="To"
+            type="date"
+            value={customEnd}
+            onChange={(e) => {
+              setCustomEnd(e.target.value);
+              setAiText(null);
+            }}
+          />
+        </div>
+      )}
+
+      {a.transactions.length === 0 ? (
+        <EmptyState title="Belum ada transaksi" hint="Tidak ada transaksi pada rentang waktu yang dipilih." />
       ) : (
         <>
           {/* Diagram donat + total */}
@@ -99,27 +138,29 @@ export default function InsightsPage() {
           </section>
 
           {/* Rincian per kategori */}
-          <section>
-            <Eyebrow className="mb-2">Top Categories</Eyebrow>
-            <div className="card divide-y divide-line px-4">
-              {a.categories.map((c) => (
-                <div key={c.id} className="py-3.5">
-                  <div className="mb-2 flex items-center gap-3">
-                    <CategoryBadge id={c.id} size={36} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">{c.label}</p>
-                      <p className="text-xs text-muted">{c.count} transaksi</p>
+          {a.categories.length > 0 && (
+            <section>
+              <Eyebrow className="mb-2">Top Categories</Eyebrow>
+              <div className="card divide-y divide-line px-4">
+                {a.categories.map((c) => (
+                  <div key={c.id} className="py-3.5">
+                    <div className="mb-2 flex items-center gap-3">
+                      <CategoryBadge id={c.id} size={36} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">{c.label}</p>
+                        <p className="text-xs text-muted">{c.count} transaksi</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="num text-sm font-medium">{formatRp(c.total)}</p>
+                        <p className="num text-xs text-muted">{Math.round(c.share * 100)}%</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="num text-sm font-medium">{formatRp(c.total)}</p>
-                      <p className="num text-xs text-muted">{Math.round(c.share * 100)}%</p>
-                    </div>
+                    <ProgressBar value={c.share} color="var(--ink)" />
                   </div>
-                  <ProgressBar value={c.share} color="var(--ink)" />
-                </div>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Pengeluaran terbesar */}
           {a.biggest && (
@@ -134,6 +175,24 @@ export default function InsightsPage() {
               <p className="num font-serif text-2xl text-ink">{formatRp(a.biggest.amount)}</p>
             </section>
           )}
+
+          {/* Sejarah Transaksi pada Periode Ini */}
+          <details className="card group px-4 py-3.5">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium">
+              <div>
+                <Eyebrow>Period History</Eyebrow>
+                <p className="mt-0.5 text-sm">
+                  Sejarah Transaksi ({a.transactions.length} catatan)
+                </p>
+              </div>
+              <IconChevron width={17} height={17} className="text-muted transition group-open:rotate-90" />
+            </summary>
+            <div className="mt-3 divide-y divide-line border-t border-line pt-1">
+              {a.transactions.map((tx) => (
+                <TransactionRow key={tx.id} tx={tx} onClick={() => openEdit(tx)} showDate />
+              ))}
+            </div>
+          </details>
         </>
       )}
 
@@ -164,7 +223,7 @@ export default function InsightsPage() {
           onClick={askGemini}
         >
           <IconSparkle width={17} height={17} />
-          {aiLoading ? "Gemini sedang menganalisis…" : "Minta saran mendalam dari Gemini"}
+          {aiLoading ? "Menganalisis…" : "Minta saran mendalam"}
         </Button>
       </section>
     </div>

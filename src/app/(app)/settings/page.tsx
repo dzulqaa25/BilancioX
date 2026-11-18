@@ -13,20 +13,11 @@ import {
   CategoryIcon,
   IconCash,
   IconCheck,
+  IconChevron,
   IconChevronLeft,
   IconDigital,
   IconShortcut,
-  IconTransfer,
 } from "@/components/Icons";
-
-const EXAMPLES = [
-  "fried chicken 30rb",
-  "fried chicken 30rb cash",
-  "ojol ke kampus 15k qris",
-  "uang jajan 1,5jt digital",
-  "hutang ke Budi 50rb beli buku",
-  "nabung liburan 100rb",
-];
 
 export default function SettingsPage() {
   const {
@@ -47,7 +38,6 @@ export default function SettingsPage() {
   const [sending, setSending] = useState(false);
   const [pendingTx, setPendingTx] = useState<NewTransaction | null>(null);
   const [lastReply, setLastReply] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   // State form Advanced Options (Budget & Saldo)
   const [monthly, setMonthly] = useState(settings.monthlyBudget);
@@ -62,8 +52,6 @@ export default function SettingsPage() {
   const [transferDir, setTransferDir] = useState<WalletType>("digital");
   const [transferAmt, setTransferAmt] = useState(0);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://bilancio-kamu.vercel.app";
-  const shortcutBaseUrl = `${origin}/quick`;
   const wallets = walletBalances(data, settings);
 
   async function runQuickInput(text: string) {
@@ -100,7 +88,7 @@ export default function SettingsPage() {
         if (goal) {
           await addEntry({ goal_id: goal.id, amount: intent.amount, date: todayISO(), note: "via Shortcut" });
         } else {
-          setLastReply("Buat dulu minimal 1 target tabungan di tab Savings sebelum menabung lewat pintasan.");
+          setLastReply("Buat dulu minimal 1 target tabungan di tab Savings.");
           return;
         }
       }
@@ -148,8 +136,8 @@ export default function SettingsPage() {
       cashInitial: cashInit,
       digitalInitial: digitalInit,
     });
-    setSavedNotice("Pengaturan Advanced berhasil disimpan");
-    setTimeout(() => setSavedNotice(null), 2500);
+    setSavedNotice("Tersimpan");
+    setTimeout(() => setSavedNotice(null), 2000);
   }
 
   async function submitTransfer(e: React.FormEvent) {
@@ -159,17 +147,10 @@ export default function SettingsPage() {
     setTransferAmt(0);
     setSavedNotice(
       transferDir === "digital"
-        ? `Berhasil pindah ${formatRp(transferAmt)} dari Digital ke Cash`
-        : `Berhasil pindah ${formatRp(transferAmt)} dari Cash ke Digital`,
+        ? `Pindah ${formatRp(transferAmt)} Digital → Cash`
+        : `Pindah ${formatRp(transferAmt)} Cash → Digital`,
     );
-    setTimeout(() => setSavedNotice(null), 2500);
-  }
-
-  function copyShortcutUrl() {
-    navigator.clipboard.writeText(shortcutBaseUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    setTimeout(() => setSavedNotice(null), 2000);
   }
 
   function exportJson() {
@@ -183,9 +164,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="animate-rise space-y-6">
+    <div className="animate-rise space-y-5">
       <PageHeader
-        eyebrow="Pintasan, budget & dompet"
+        eyebrow="Preferensi"
         title="Settings"
         right={
           <Link
@@ -197,16 +178,11 @@ export default function SettingsPage() {
         }
       />
 
-      {/* Quick Input (AI) dengan Pengingat & Shortcut Cash/Digital */}
+      {/* Quick Input (AI) — Bersih tanpa subjudul panjang & tanpa chip contoh */}
       <section className="card p-4">
         <div className="flex items-center gap-2">
-          <IconShortcut className="text-ink" />
-          <div>
-            <Eyebrow>Quick Input (AI)</Eyebrow>
-            <p className="text-xs text-muted">
-              Ketik kalimat bebas — otomatis mengenali makanan bahasa Inggris &amp; pilihan Cash/Digital
-            </p>
-          </div>
+          <IconShortcut className="text-ink" width={17} height={17} />
+          <Eyebrow>Quick Input (AI)</Eyebrow>
         </div>
 
         <form
@@ -214,50 +190,33 @@ export default function SettingsPage() {
             e.preventDefault();
             runQuickInput(msg);
           }}
-          className="mt-3 flex gap-2"
+          className="mt-2.5 flex gap-2"
         >
           <input
             value={msg}
             onChange={(e) => setMsg(e.target.value)}
-            placeholder="Contoh: fried chicken 30rb"
+            placeholder="Ketik transaksi…"
             className="flex-1 rounded-2xl border border-line bg-bg px-3.5 py-2.5 text-sm outline-none focus:border-oro"
           />
           <button
             type="submit"
-            disabled={sending}
+            disabled={sending || !msg.trim()}
             className="rounded-2xl bg-hero px-4 py-2.5 text-sm font-medium text-hero-ink disabled:opacity-40"
           >
             {sending ? "…" : "Catat"}
           </button>
         </form>
 
-        <div className="mt-2.5 flex gap-1.5 overflow-x-auto pb-1">
-          {EXAMPLES.map((ex) => (
-            <button
-              key={ex}
-              type="button"
-              onClick={() => runQuickInput(ex)}
-              className="shrink-0 rounded-full border border-line bg-bg px-2.5 py-1 text-xs text-muted active:scale-95"
-            >
-              {ex}
-            </button>
-          ))}
-        </div>
-
         {/* Pengingat & Shortcut jika user tidak menulis "cash"/"digital" */}
         {pendingTx && (
           <div className="mt-3 space-y-2.5 rounded-2xl border border-oro bg-soft p-3.5 text-xs leading-relaxed">
-            <p className="font-semibold text-terracotta">
-              Kamu belum menuliskan &ldquo;cash&rdquo; atau &ldquo;digital&rdquo;.
-            </p>
             <div className="flex items-center gap-2 text-ink">
               <CategoryIcon id={pendingTx.category} width={17} height={17} />
               <span>
-                AI mengkategorikan ini sebagai{" "}
                 <b>
                   {getCategory(pendingTx.category).label} · {formatRp(pendingTx.amount)}
                 </b>{" "}
-                ({pendingTx.note}). Pilih jenis saldo:
+                ({pendingTx.note}) — pilih saldo:
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -267,7 +226,7 @@ export default function SettingsPage() {
                 onClick={() => confirmPendingWallet("cash")}
                 className="flex items-center justify-center gap-1.5 rounded-xl bg-hero px-3 py-2.5 font-medium text-hero-ink active:scale-95"
               >
-                <IconCash width={16} height={16} /> Cash (Tunai)
+                <IconCash width={16} height={16} /> Cash
               </button>
               <button
                 type="button"
@@ -275,7 +234,7 @@ export default function SettingsPage() {
                 onClick={() => confirmPendingWallet("digital")}
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-line bg-card px-3 py-2.5 font-medium text-ink active:scale-95"
               >
-                <IconDigital width={16} height={16} /> Saldo Digital
+                <IconDigital width={16} height={16} /> Digital
               </button>
             </div>
           </div>
@@ -289,195 +248,135 @@ export default function SettingsPage() {
         )}
       </section>
 
-      {/* ================= ADVANCED OPTIONS: BUDGET & WALLETS ================= */}
-      <section id="advanced" className="card space-y-5 p-4">
-        <div>
-          <Eyebrow>Advanced Options</Eyebrow>
-          <h2 className="mt-0.5 font-serif text-2xl">Budget &amp; Wallets</h2>
-          <p className="text-xs text-muted">
-            Tersimpan khusus untuk akun ini tanpa menghapus data transaksi yang sudah ada.
-          </p>
+      {/* ================= ADVANCED OPTIONS (Rapi dengan Dropdown) ================= */}
+      <section id="advanced" className="card divide-y divide-line px-4">
+        <div className="py-3.5 flex items-center justify-between">
+          <div>
+            <Eyebrow>Advanced Options</Eyebrow>
+            <p className="mt-0.5 font-serif text-xl">Budget &amp; Wallets</p>
+          </div>
+          {savedNotice && <span className="text-xs font-medium text-oliva">{savedNotice}</span>}
         </div>
 
-        {/* Ringkasan Saldo Saat Ini */}
-        <div className="grid grid-cols-2 gap-2.5 rounded-2xl bg-soft p-3 text-xs">
-          <div className="flex items-center gap-2.5">
-            <IconDigital width={17} height={17} className="shrink-0 text-muted" />
-            <div>
-              <p className="text-muted">Saldo Digital</p>
-              <p className="num mt-0.5 text-sm font-semibold text-ink">{formatRp(wallets.digital)}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <IconCash width={17} height={17} className="shrink-0 text-muted" />
-            <div>
-              <p className="text-muted">Saldo Cash</p>
-              <p className="num mt-0.5 text-sm font-semibold text-ink">{formatRp(wallets.cash)}</p>
-            </div>
-          </div>
-        </div>
-
-        <form onSubmit={saveAdvanced} className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Eyebrow>1 · Batas Budget Pengeluaran</Eyebrow>
-            <label className="flex items-center gap-1.5 text-xs text-muted">
+        {/* Dropdown 1: Batas Budget */}
+        <details className="group py-3.5">
+          <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium">
+            <span>Batas Budget</span>
+            <span className="flex items-center gap-2 text-xs font-normal text-muted">
+              {monthly > 0 ? formatRp(monthly) : "Belum diatur"}
+              <IconChevron width={16} height={16} className="transition group-open:rotate-90" />
+            </span>
+          </summary>
+          <form onSubmit={saveAdvanced} className="mt-3.5 space-y-3">
+            <label className="flex items-center gap-2 text-xs text-muted">
               <input
                 type="checkbox"
                 checked={autoBreak}
                 onChange={(e) => setAutoBreak(e.target.checked)}
                 className="accent-ink"
               />
-              Otomatis bagi ke Mingguan &amp; Harian
+              Bagi otomatis ke Mingguan &amp; Harian
             </label>
-          </div>
-
-          <AmountInput
-            key={`m-${settings.monthlyBudget}`}
-            label="Monthly Budget (Bulanan)"
-            value={monthly}
-            onChange={handleMonthlyChange}
-          />
-          <div className="grid grid-cols-2 gap-3">
             <AmountInput
-              key={`w-${autoBreak ? weekly : settings.weeklyBudget}`}
-              label="Weekly Budget (Mingguan)"
-              value={weekly}
-              onChange={(v) => {
-                setAutoBreak(false);
-                setWeekly(v);
-              }}
+              key={`m-${settings.monthlyBudget}`}
+              label="Monthly"
+              value={monthly}
+              onChange={handleMonthlyChange}
             />
-            <AmountInput
-              key={`d-${autoBreak ? daily : settings.dailyBudget}`}
-              label="Daily Budget (Harian)"
-              value={daily}
-              onChange={(v) => {
-                setAutoBreak(false);
-                setDaily(v);
-              }}
+            <div className="grid grid-cols-2 gap-2.5">
+              <AmountInput
+                key={`w-${autoBreak ? weekly : settings.weeklyBudget}`}
+                label="Weekly"
+                value={weekly}
+                onChange={(v) => {
+                  setAutoBreak(false);
+                  setWeekly(v);
+                }}
+              />
+              <AmountInput
+                key={`d-${autoBreak ? daily : settings.dailyBudget}`}
+                label="Daily"
+                value={daily}
+                onChange={(v) => {
+                  setAutoBreak(false);
+                  setDaily(v);
+                }}
+              />
+            </div>
+            <Button type="submit">Simpan Budget</Button>
+          </form>
+        </details>
+
+        {/* Dropdown 2: Pindah Saldo */}
+        <details className="group py-3.5">
+          <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium">
+            <span>Pindah Saldo (Digital ↔ Cash)</span>
+            <IconChevron width={16} height={16} className="text-muted transition group-open:rotate-90" />
+          </summary>
+          <form onSubmit={submitTransfer} className="mt-3.5 space-y-3">
+            <Segmented
+              value={transferDir}
+              onChange={setTransferDir}
+              options={[
+                { value: "digital", label: "Digital → Cash", activeClass: "bg-hero text-hero-ink" },
+                { value: "cash", label: "Cash → Digital", activeClass: "bg-hero text-hero-ink" },
+              ]}
             />
-          </div>
+            <AmountInput label="Nominal" value={transferAmt} onChange={setTransferAmt} />
+            <Button type="submit">Pindahkan</Button>
+          </form>
+        </details>
 
-          <div className="rule-oro" />
-
-          <Eyebrow>2 · Penyesuaian Saldo Awal (Opsional)</Eyebrow>
-          <p className="text-xs text-muted">
-            Gunakan jika kamu ingin menyamakan saldo awal Digital dan Cash dengan isi dompetmu saat ini.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <AmountInput
-              key={`di-${settings.digitalInitial}`}
-              label="Saldo Awal Digital"
-              value={digitalInit}
-              onChange={setDigitalInit}
-            />
-            <AmountInput
-              key={`ci-${settings.cashInitial}`}
-              label="Saldo Awal Cash"
-              value={cashInit}
-              onChange={setCashInit}
-            />
-          </div>
-
-          <Button type="submit">Simpan Pengaturan Advanced</Button>
-        </form>
-
-        <div className="rule-oro" />
-
-        {/* Form Pindah Saldo (Tarik Tunai / Top-Up) */}
-        <form onSubmit={submitTransfer} className="space-y-3">
-          <div className="flex items-center gap-1.5">
-            <IconTransfer width={15} height={15} className="text-muted" />
-            <Eyebrow>3 · Pindah Saldo (Tarik Tunai ATM / Top-Up)</Eyebrow>
-          </div>
-          <Segmented
-            value={transferDir}
-            onChange={setTransferDir}
-            options={[
-              { value: "digital", label: "Digital ke Cash", activeClass: "bg-hero text-hero-ink" },
-              { value: "cash", label: "Cash ke Digital", activeClass: "bg-hero text-hero-ink" },
-            ]}
-          />
-          <AmountInput label="Nominal perpindahan" value={transferAmt} onChange={setTransferAmt} />
-          <Button type="submit" variant="ghost">
-            Pindahkan Saldo Sekarang
-          </Button>
-        </form>
-
-        {savedNotice && (
-          <p className="rounded-xl bg-soft px-3 py-2 text-center text-xs font-medium text-oliva">{savedNotice}</p>
-        )}
+        {/* Dropdown 3: Saldo Awal */}
+        <details className="group py-3.5">
+          <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium">
+            <span>Saldo Awal Dompet</span>
+            <span className="flex items-center gap-2 text-xs font-normal text-muted">
+              <span className="num">{formatRp(wallets.total)}</span>
+              <IconChevron width={16} height={16} className="transition group-open:rotate-90" />
+            </span>
+          </summary>
+          <form onSubmit={saveAdvanced} className="mt-3.5 space-y-3">
+            <div className="grid grid-cols-2 gap-2.5">
+              <AmountInput
+                key={`di-${settings.digitalInitial}`}
+                label="Awal Digital"
+                value={digitalInit}
+                onChange={setDigitalInit}
+              />
+              <AmountInput
+                key={`ci-${settings.cashInitial}`}
+                label="Awal Cash"
+                value={cashInit}
+                onChange={setCashInit}
+              />
+            </div>
+            <Button type="submit">Simpan Saldo Awal</Button>
+          </form>
+        </details>
       </section>
 
-      {/* Panduan 1-Cara iOS Shortcut */}
-      <section className="card space-y-3 p-4 text-xs leading-relaxed">
-        <Eyebrow>iOS Shortcut Setup (Hanya 1 Aksi)</Eyebrow>
-        <p className="text-muted">
-          Salin link di bawah, lalu buka aplikasi <b>Shortcuts (Pintasan)</b> di iPhone → ketuk <b>+</b>:
-        </p>
-
-        <div className="flex items-center gap-2 rounded-2xl bg-soft p-2.5">
-          <code className="flex-1 truncate font-mono text-ink">{shortcutBaseUrl}</code>
-          <button
-            type="button"
-            onClick={copyShortcutUrl}
-            className="shrink-0 rounded-xl bg-hero px-3 py-1.5 font-medium text-hero-ink"
-          >
-            {copied ? "Tersalin" : "Salin Link"}
-          </button>
+      {/* Akun & Cadangan Data (Digabung lebih ringkas) */}
+      <section className="card space-y-3 p-4 text-xs">
+        <div className="flex items-center justify-between">
+          <Eyebrow>Account &amp; Backup</Eyebrow>
+          <span className="text-muted">{mode === "cloud" ? session?.user?.email : "Demo Mode"}</span>
         </div>
 
-        <ol className="list-decimal space-y-1.5 pl-4 text-muted">
-          <li>
-            Di aplikasi <b>Shortcuts</b>, tambah <b className="text-ink">1 aksi saja: Open URLs</b> (<i>Buka URL</i>), lalu tempel link di atas.
-          </li>
-          <li>
-            <b>Penting untuk pengguna iPhone:</b> saat pertama kali Shortcut membuka Safari, <b>login 1× di Safari</b> (karena sesi login Safari dan aplikasi Home Screen terpisah di iOS).
-          </li>
-        </ol>
-      </section>
-
-      {/* Status penyimpanan */}
-      <section className="card space-y-3 p-4 text-sm">
-        <Eyebrow>Storage Mode</Eyebrow>
-        {mode === "cloud" ? (
-          <>
-            <p>
-              Terhubung ke <b>Supabase Cloud</b> sebagai <b>{session?.user?.email}</b>.
-            </p>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={exportJson}>
+            Backup JSON
+          </Button>
+          {mode === "cloud" ? (
             <Button variant="ghost" onClick={signOut}>
-              Keluar (Sign Out)
+              Sign Out
             </Button>
-          </>
-        ) : (
-          <>
-            <p className="leading-relaxed text-muted">
-              Saat ini berjalan dalam <b>Demo Mode</b> (data disimpan di browser perangkat ini).
-            </p>
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <Button
-                variant="ghost"
-                onClick={() => confirm("Kembalikan ke data contoh awal?") && resetDemo(false)}
-              >
-                Reset data contoh
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => confirm("Kosongkan semua data di perangkat ini?") && resetDemo(true)}
-              >
-                Kosongkan data
-              </Button>
-            </div>
-          </>
-        )}
-      </section>
-
-      {/* Cadangan data */}
-      <section className="card space-y-3 p-4">
-        <Eyebrow>Data Backup</Eyebrow>
-        <Button variant="ghost" onClick={exportJson}>
-          Unduh cadangan JSON
-        </Button>
+          ) : (
+            <Button variant="danger" onClick={() => confirm("Kosongkan data demo?") && resetDemo(true)}>
+              Reset
+            </Button>
+          )}
+        </div>
       </section>
     </div>
   );

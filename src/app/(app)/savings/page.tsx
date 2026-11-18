@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useStore } from "@/lib/store";
-import type { Debt, DebtDirection, SavingsGoal } from "@/lib/types";
+import type { Debt, DebtDirection, SavingsGoal, WalletType } from "@/lib/types";
 import { debtRemaining, goalSaved, totalDebt, totalSavings } from "@/lib/finance";
 import { formatRp, formatShortDate, todayISO } from "@/lib/format";
 import { Sheet } from "@/components/Sheet";
@@ -18,10 +18,10 @@ import {
   Segmented,
   TextField,
 } from "@/components/ui";
-import { GOAL_ICONS, GoalIcon, IconTrash } from "@/components/Icons";
+import { GOAL_ICONS, GoalIcon, IconCash, IconDigital, IconTrash } from "@/components/Icons";
 
 export default function SavingsPage() {
-  const { data, addGoal, deleteGoal, addEntry, addDebt, updateDebt, deleteDebt } = useStore();
+  const { data, addGoal, deleteGoal, addEntry, addDebt, updateDebt, deleteDebt, addTransaction } = useStore();
   const [debtFilter, setDebtFilter] = useState<DebtDirection>("owe");
 
   const [goalModal, setGoalModal] = useState(false);
@@ -31,6 +31,40 @@ export default function SavingsPage() {
 
   const savedTotal = totalSavings(data);
   const debts = data.debts.filter((d) => d.direction === debtFilter);
+
+  /**
+   * Saat membayar/mencicil hutang (I Owe), otomatis memotong saldo (mencatat pengeluaran)
+   * sesuai dompet (Digital/Cash) yang dipilih pengguna.
+   * Jika piutang (Owed to Me) dibayar oleh teman, otomatis menambah saldo (pemasukan).
+   */
+  async function handleDebtPayment(debt: Debt, payAmount: number, wallet: WalletType) {
+    const actualPay = Math.min(debtRemaining(debt), payAmount);
+    if (actualPay <= 0) return;
+
+    await updateDebt(debt.id, { paid: Math.min(debt.amount, debt.paid + actualPay) });
+
+    if (debt.direction === "owe") {
+      await addTransaction({
+        type: "expense",
+        amount: actualPay,
+        category: "lainnya",
+        note: `Bayar hutang ke ${debt.person}${debt.note ? ` (${debt.note})` : ""}`,
+        date: todayISO(),
+        source: "app",
+        wallet,
+      });
+    } else {
+      await addTransaction({
+        type: "income",
+        amount: actualPay,
+        category: "lainnya_masuk",
+        note: `Pelunasan piutang dari ${debt.person}${debt.note ? ` (${debt.note})` : ""}`,
+        date: todayISO(),
+        source: "app",
+        wallet,
+      });
+    }
+  }
 
   return (
     <div className="animate-rise space-y-6">
@@ -142,17 +176,9 @@ export default function SavingsPage() {
                   </div>
                   <div className="mt-2 flex gap-4 text-xs">
                     {!done && (
-                      <>
-                        <button onClick={() => setPayingDebt(d)} className="font-medium text-ink">
-                          Cicil / Bayar
-                        </button>
-                        <button
-                          onClick={() => updateDebt(d.id, { paid: d.amount })}
-                          className="font-medium text-muted"
-                        >
-                          Tandai lunas
-                        </button>
-                      </>
+                      <button onClick={() => setPayingDebt(d)} className="font-medium text-ink">
+                        Cicil / Bayar
+                      </button>
                     )}
                     <button
                       onClick={() => confirm("Hapus catatan hutang ini?") && deleteDebt(d.id)}
@@ -207,18 +233,22 @@ export default function SavingsPage() {
         />
       </Sheet>
 
-      {/* Modal: Cicil hutang */}
+      {/* Modal: Cicil / Lunasi hutang (Otomatis potong saldo) */}
       <Sheet
         open={Boolean(payingDebt)}
         onClose={() => setPayingDebt(null)}
         title={payingDebt ? `Bayar · ${payingDebt.person}` : ""}
-        subtitle={payingDebt ? `Sisa ${formatRp(debtRemaining(payingDebt))}` : ""}
+        subtitle={
+          payingDebt
+            ? `Sisa ${formatRp(debtRemaining(payingDebt))} · ${payingDebt.direction === "owe" ? "Otomatis memotong saldo" : "Otomatis menambah saldo"}`
+            : ""
+        }
       >
         {payingDebt && (
           <PayDebtForm
             max={debtRemaining(payingDebt)}
-            onSave={async (add) => {
-              await updateDebt(payingDebt.id, { paid: Math.min(payingDebt.amount, payingDebt.paid + add) });
+            onSave={async (add, wallet) => {
+              await handleDebtPayment(payingDebt, add, wallet);
               setPayingDebt(null);
             }}
           />
@@ -351,19 +381,58 @@ function NewDebtForm({
   );
 }
 
-function PayDebtForm({ max, onSave }: { max: number; onSave: (amount: number) => Promise<void> }) {
+function PayDebtForm({
+  max,
+  onSave,
+}: {
+  max: number;
+  onSave: (amount: number, wallet: WalletType) => Promise<void>;
+}) {
   const [amount, setAmount] = useState(max);
+  const [wallet, setWallet] = useState<WalletType>("digital");
+  const [busy, setBusy] = useState(false);
+
   return (
     <form
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        if (amount <= 0) return;
-        onSave(amount);
+        if (amount <= 0 || busy) return;
+        setBusy(true);
+        try {
+          await onSave(amount, wallet);
+        } finally {
+          setBusy(false);
+        }
       }}
       className="space-y-4 pb-2"
     >
       <AmountInput label="Nominal pembayaran" value={amount} onChange={setAmount} autoFocus large />
-      <Button type="submit">Catat pembayaran</Button>
+
+      <div>
+        <FieldLabel>Potong / Gunakan Saldo</FieldLabel>
+        <div className="grid grid-cols-2 gap-2">
+          {(["digital", "cash"] as WalletType[]).map((w) => {
+            const active = wallet === w;
+            return (
+              <button
+                key={w}
+                type="button"
+                onClick={() => setWallet(w)}
+                className={`flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium transition ${
+                  active ? "border-ink bg-hero text-hero-ink" : "border-line bg-card text-ink"
+                }`}
+              >
+                {w === "digital" ? <IconDigital width={16} height={16} /> : <IconCash width={16} height={16} />}
+                {w === "digital" ? "Saldo Digital" : "Uang Cash"}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <Button type="submit" disabled={busy}>
+        {busy ? "Menyimpan…" : amount >= max ? "Lunasi & Potong Saldo" : "Catat Cicilan & Potong Saldo"}
+      </Button>
     </form>
   );
 }

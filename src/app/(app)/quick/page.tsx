@@ -11,19 +11,8 @@ import type { NewTransaction, WalletType } from "@/lib/types";
 import { Button, Eyebrow, PageHeader } from "@/components/ui";
 import { CategoryIcon, IconCash, IconCheck, IconChevronLeft, IconDigital, IconShortcut } from "@/components/Icons";
 
-const QUICK_CHIPS = [
-  "fried chicken 30rb cash",
-  "kopi susu 18rb qris",
-  "ojol ke kampus 15k digital",
-  "uang jajan 1,5jt digital",
-  "hutang ke Budi 50rb",
-  "nabung liburan 100rb",
-];
-
 /**
  * Halaman khusus pintasan 1-langkah (/quick).
- * Jika pengguna tidak menuliskan "cash" atau "digital", AI akan mengingatkan
- * dan menampilkan 2 tombol shortcut untuk memilih Cash atau Digital.
  */
 export default function QuickCapturePage() {
   const { data, addTransaction, addDebt, addEntry } = useStore();
@@ -100,7 +89,7 @@ export default function QuickCapturePage() {
   return (
     <div className="animate-rise space-y-5">
       <PageHeader
-        eyebrow="Pintasan Cepat"
+        eyebrow="Pintasan"
         title="Quick Input"
         right={
           <Link
@@ -121,49 +110,32 @@ export default function QuickCapturePage() {
       >
         <div className="flex items-center gap-2 text-ink">
           <IconShortcut width={18} height={18} />
-          <Eyebrow>Ketik transaksi lalu tekan Enter</Eyebrow>
+          <Eyebrow>Quick Input</Eyebrow>
         </div>
 
         <input
           autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Contoh: fried chicken 30rb cash"
+          placeholder="Ketik transaksi…"
           className="w-full rounded-2xl border border-line bg-bg px-4 py-3.5 text-base outline-none focus:border-oro"
         />
 
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
-          {QUICK_CHIPS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => submit(c)}
-              className="shrink-0 rounded-full border border-line bg-bg px-3 py-1 text-xs text-muted active:scale-95"
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-
         <Button type="submit" disabled={busy || !text.trim()}>
-          {busy ? "Memproses…" : "Simpan ke Bilancio"}
+          {busy ? "Memproses…" : "Simpan"}
         </Button>
       </form>
 
       {/* Pengingat & Shortcut jika user belum menulis "cash"/"digital" */}
       {pendingTx && (
         <div className="card space-y-3 border-oro p-4 text-xs leading-relaxed">
-          <p className="font-semibold text-terracotta">
-            Kamu belum menuliskan jenis saldo (&ldquo;cash&rdquo; / &ldquo;digital&rdquo;).
-          </p>
           <div className="flex items-center gap-2.5 text-ink">
             <CategoryIcon id={pendingTx.category} width={18} height={18} />
             <span>
-              AI mengenali transaksi ini sebagai{" "}
               <b>
                 {getCategory(pendingTx.category).label} · {formatRp(pendingTx.amount)}
               </b>{" "}
-              ({pendingTx.note}). Pilih jenis saldo:
+              ({pendingTx.note}) — pilih saldo:
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2.5 pt-1">
@@ -173,7 +145,7 @@ export default function QuickCapturePage() {
               onClick={() => saveWithWallet("cash")}
               className="flex items-center justify-center gap-2 rounded-2xl bg-hero px-3 py-3 text-sm font-medium text-hero-ink active:scale-95"
             >
-              <IconCash width={17} height={17} /> Cash (Tunai)
+              <IconCash width={17} height={17} /> Cash
             </button>
             <button
               type="button"
@@ -181,7 +153,7 @@ export default function QuickCapturePage() {
               onClick={() => saveWithWallet("digital")}
               className="flex items-center justify-center gap-2 rounded-2xl border border-line bg-soft px-3 py-3 text-sm font-medium text-ink active:scale-95"
             >
-              <IconDigital width={17} height={17} /> Saldo Digital
+              <IconDigital width={17} height={17} /> Digital
             </button>
           </div>
         </div>
