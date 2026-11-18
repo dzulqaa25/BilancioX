@@ -86,7 +86,7 @@ export function demoData(): AppData {
       {
         id: goalTrip,
         name: "Liburan ke Bali",
-        emoji: "🏝️",
+        emoji: "travel",
         target: 3_000_000,
         initial_amount: 500_000,
         deadline: null,
@@ -95,7 +95,7 @@ export function demoData(): AppData {
       {
         id: goalLaptop,
         name: "Dana darurat",
-        emoji: "🛡️",
+        emoji: "shield",
         target: 2_000_000,
         initial_amount: 300_000,
         deadline: null,

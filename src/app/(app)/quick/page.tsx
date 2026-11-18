@@ -9,7 +9,7 @@ import { parseMessageLocal, walletLabel, type ParsedIntent } from "@/lib/parser"
 import { formatRp, todayISO } from "@/lib/format";
 import type { NewTransaction, WalletType } from "@/lib/types";
 import { Button, Eyebrow, PageHeader } from "@/components/ui";
-import { IconChevronLeft, IconShortcut } from "@/components/Icons";
+import { CategoryIcon, IconCash, IconCheck, IconChevronLeft, IconDigital, IconShortcut } from "@/components/Icons";
 
 const QUICK_CHIPS = [
   "fried chicken 30rb cash",
@@ -53,7 +53,6 @@ export default function QuickCapturePage() {
       }
 
       if (intent.kind === "transaction") {
-        // Jika pengguna belum menuliskan "cash"/"digital", ingatkan & beri shortcut pilihan
         if (!intent.walletSpecified) {
           setPendingTx(intent.data);
           setText("");
@@ -89,7 +88,7 @@ export default function QuickCapturePage() {
       const cat = getCategory(finalTx.category);
       setPendingTx(null);
       setResult(
-        `✅ Tercatat (${finalTx.type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(wallet)})\n${cat.emoji} ${cat.label} · ${formatRp(finalTx.amount)}\n${finalTx.note ?? ""}`,
+        `Tercatat (${finalTx.type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(wallet)})\n${cat.label} · ${formatRp(finalTx.amount)} — ${finalTx.note ?? ""}`,
       );
     } catch (err) {
       setResult(`Gagal menyimpan: ${err instanceof Error ? err.message : "Terjadi kesalahan"}`);
@@ -120,9 +119,9 @@ export default function QuickCapturePage() {
         }}
         className="card space-y-4 p-5"
       >
-        <div className="flex items-center gap-2 text-terracotta">
-          <IconShortcut width={20} height={20} />
-          <Eyebrow className="!text-terracotta">Ketik transaksi lalu tekan Enter</Eyebrow>
+        <div className="flex items-center gap-2 text-ink">
+          <IconShortcut width={18} height={18} />
+          <Eyebrow>Ketik transaksi lalu tekan Enter</Eyebrow>
         </div>
 
         <input
@@ -155,40 +154,45 @@ export default function QuickCapturePage() {
       {pendingTx && (
         <div className="card space-y-3 border-oro p-4 text-xs leading-relaxed">
           <p className="font-semibold text-terracotta">
-            💡 Kamu belum menuliskan jenis saldo (&ldquo;cash&rdquo; / &ldquo;digital&rdquo;).
+            Kamu belum menuliskan jenis saldo (&ldquo;cash&rdquo; / &ldquo;digital&rdquo;).
           </p>
-          <p className="text-ink">
-            AI mengenali transaksi ini sebagai{" "}
-            <b>
-              {getCategory(pendingTx.category).emoji} {getCategory(pendingTx.category).label} ·{" "}
-              {formatRp(pendingTx.amount)}
-            </b>{" "}
-            ({pendingTx.note}). Pilih shortcut jenis saldo untuk menyimpannya:
-          </p>
+          <div className="flex items-center gap-2.5 text-ink">
+            <CategoryIcon id={pendingTx.category} width={18} height={18} />
+            <span>
+              AI mengenali transaksi ini sebagai{" "}
+              <b>
+                {getCategory(pendingTx.category).label} · {formatRp(pendingTx.amount)}
+              </b>{" "}
+              ({pendingTx.note}). Pilih jenis saldo:
+            </span>
+          </div>
           <div className="grid grid-cols-2 gap-2.5 pt-1">
             <button
               type="button"
               disabled={busy}
               onClick={() => saveWithWallet("cash")}
-              className="rounded-2xl bg-hero px-3 py-3 text-sm font-medium text-hero-ink active:scale-95"
+              className="flex items-center justify-center gap-2 rounded-2xl bg-hero px-3 py-3 text-sm font-medium text-hero-ink active:scale-95"
             >
-              💵 Cash (Tunai)
+              <IconCash width={17} height={17} /> Cash (Tunai)
             </button>
             <button
               type="button"
               disabled={busy}
               onClick={() => saveWithWallet("digital")}
-              className="rounded-2xl bg-amalfi px-3 py-3 text-sm font-medium text-white active:scale-95"
+              className="flex items-center justify-center gap-2 rounded-2xl border border-line bg-soft px-3 py-3 text-sm font-medium text-ink active:scale-95"
             >
-              💳 Saldo Digital
+              <IconDigital width={17} height={17} /> Saldo Digital
             </button>
           </div>
         </div>
       )}
 
       {result && (
-        <div className="card space-y-3 border-oliva p-4 text-sm leading-relaxed">
-          <p className="whitespace-pre-line">{result}</p>
+        <div className="card space-y-3 p-4 text-sm leading-relaxed">
+          <div className="flex items-start gap-2.5">
+            <IconCheck width={18} height={18} className="mt-0.5 shrink-0 text-oliva" />
+            <p className="whitespace-pre-line">{result}</p>
+          </div>
           <Button variant="ghost" onClick={() => router.push("/")}>
             Lihat di Home →
           </Button>

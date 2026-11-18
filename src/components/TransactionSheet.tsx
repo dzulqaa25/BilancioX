@@ -7,7 +7,7 @@ import { todayISO } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { Sheet } from "./Sheet";
 import { AmountInput, Button, FieldLabel, Segmented, TextField } from "./ui";
-import { IconTrash } from "./Icons";
+import { CategoryIcon, IconCash, IconDigital, IconTrash } from "./Icons";
 
 export interface TxSheetState {
   open: boolean;
@@ -69,7 +69,7 @@ function TransactionForm({ state, onDone }: { state: TxSheetState; onDone: () =>
         value={type}
         onChange={switchType}
         options={[
-          { value: "expense", label: "Expense", activeClass: "bg-terracotta text-white" },
+          { value: "expense", label: "Expense", activeClass: "bg-hero text-hero-ink" },
           { value: "income", label: "Income", activeClass: "bg-oliva text-white" },
         ]}
       />
@@ -77,15 +77,25 @@ function TransactionForm({ state, onDone }: { state: TxSheetState; onDone: () =>
       <AmountInput value={amount} onChange={setAmount} autoFocus={!e} large />
 
       <div>
-        <FieldLabel>Wallet / Jenis Saldo</FieldLabel>
-        <Segmented
-          value={wallet}
-          onChange={setWallet}
-          options={[
-            { value: "digital", label: "💳 Saldo Digital", activeClass: "bg-amalfi text-white" },
-            { value: "cash", label: "💵 Uang Cash", activeClass: "bg-hero text-hero-ink" },
-          ]}
-        />
+        <FieldLabel>Wallet</FieldLabel>
+        <div className="grid grid-cols-2 gap-2">
+          {(["digital", "cash"] as WalletType[]).map((w) => {
+            const active = wallet === w;
+            return (
+              <button
+                key={w}
+                type="button"
+                onClick={() => setWallet(w)}
+                className={`flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium transition ${
+                  active ? "border-ink bg-hero text-hero-ink" : "border-line bg-card text-ink"
+                }`}
+              >
+                {w === "digital" ? <IconDigital width={16} height={16} /> : <IconCash width={16} height={16} />}
+                {w === "digital" ? "Saldo Digital" : "Uang Cash"}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div>
@@ -98,16 +108,11 @@ function TransactionForm({ state, onDone }: { state: TxSheetState; onDone: () =>
                 type="button"
                 key={c.id}
                 onClick={() => setCategory(c.id)}
-                className={`flex flex-col items-center gap-1 rounded-2xl border px-1 py-2.5 text-center text-xs leading-tight text-ink transition ${
-                  active ? "font-semibold" : "border-line bg-card"
+                className={`flex flex-col items-center gap-1.5 rounded-2xl border px-1.5 py-2.5 text-center text-xs leading-tight transition ${
+                  active ? "border-ink bg-soft font-semibold text-ink" : "border-line bg-card text-muted"
                 }`}
-                style={
-                  active
-                    ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))`, borderColor: c.color }
-                    : undefined
-                }
               >
-                <span className="text-lg">{c.emoji}</span>
+                <CategoryIcon id={c.id} width={20} height={20} className={active ? "text-ink" : "text-muted"} />
                 {c.label}
               </button>
             );

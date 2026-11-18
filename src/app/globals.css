@@ -1,50 +1,51 @@
 @import "tailwindcss";
 
 /* =====================================================================
-   Bilancio — palet "Italia minimalis"
+   Bilancio — Palet Minimalis Editorial Italia (Tenang & Monokrom Hangat)
    ===================================================================== */
 :root {
-  --bg: #f7f2e8; /* Avorio */
-  --card: #fffdf8; /* Carta */
-  --ink: #2b211c; /* Espresso */
-  --muted: #8c7d70;
-  --line: #e9dfcc;
-  --soft: #efe6d4;
-  --hero: #2b211c;
-  --hero-ink: #f7f2e8;
+  --bg: #f8f5ee; /* Avorio lembut */
+  --card: #fffdf9; /* Carta */
+  --ink: #241c18; /* Espresso */
+  --muted: #887a6d;
+  --line: #e8e0d0;
+  --soft: #f0eadc;
+  --hero: #241c18;
+  --hero-ink: #f8f5ee;
 
-  --terracotta: #c0532f;
-  --oliva: #6b7a3a;
-  --limone: #a88514; /* versi teks agar kontras */
-  --limone-fill: #e3bc3f;
-  --amalfi: #2f5d7c;
+  /* Aksen terbatas (tidak banyak warna) */
+  --terracotta: #b04e30;
+  --oliva: #586838;
+  --limone: #8f7332;
+  --limone-fill: #b89b5e;
+  --amalfi: #3d5463;
   --oro: #b89b5e;
-  --prugna: #8e5b7a;
-  --salvia: #5e8c8a;
-  --grigio: #a39486;
+  --prugna: #6e5a4f;
+  --salvia: #7c6f62;
+  --grigio: #a39587;
 }
 
 @media (prefers-color-scheme: dark) {
   /* "Notte a Roma" */
   :root {
-    --bg: #17110e;
-    --card: #221a16;
-    --ink: #f1e8d8;
-    --muted: #a69585;
-    --line: #3a2e27;
-    --soft: #2e241f;
-    --hero: #2e231d;
-    --hero-ink: #f1e8d8;
+    --bg: #16120f;
+    --card: #1f1916;
+    --ink: #efe7d8;
+    --muted: #9e8f80;
+    --line: #332923;
+    --soft: #28201b;
+    --hero: #261e19;
+    --hero-ink: #efe7d8;
 
-    --terracotta: #e58b6b;
-    --oliva: #a7b56e;
-    --limone: #e3bc3f;
-    --limone-fill: #e3bc3f;
-    --amalfi: #7fa9c9;
-    --oro: #cdb27a;
-    --prugna: #c08fae;
-    --salvia: #8fbcb9;
-    --grigio: #8a7b6e;
+    --terracotta: #d87c5c;
+    --oliva: #96a663;
+    --limone: #cdb27a;
+    --limone-fill: #cdb27a;
+    --amalfi: #7e97a8;
+    --oro: #c5ab73;
+    --prugna: #9c8879;
+    --salvia: #887a6d;
+    --grigio: #75685c;
   }
 }
 
@@ -75,16 +76,12 @@ html {
 
 body {
   background-color: var(--bg);
-  /* tekstur kertas halus */
-  background-image: radial-gradient(color-mix(in srgb, var(--ink) 4%, transparent) 1px, transparent 1px);
-  background-size: 4px 4px;
   color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
 }
 
-/* iOS men-zoom input di bawah 16px; cegah dengan ukuran minimum 16px */
 input,
 select,
 textarea {
@@ -101,26 +98,26 @@ textarea {
 }
 
 @utility double-rule {
-  border-top: 1px solid var(--oro);
-  border-bottom: 1px solid var(--oro);
-  height: 4px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  height: 3px;
 }
 
 @utility arch {
-  border-radius: 999px 999px 20px 20px / 160px 160px 20px 20px;
+  border-radius: 999px 999px 18px 18px / 140px 140px 18px 18px;
 }
 
 @utility card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 16px;
 }
 
 @utility tricolore {
-  height: 3px;
-  width: 36px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #6b7a3a 33%, #f7f2e8 33% 66%, #c0532f 66%);
+  height: 2px;
+  width: 28px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, #586838 33%, #d8cfc0 33% 66%, #b04e30 66%);
 }
 
 @utility pt-safe {
@@ -150,7 +147,7 @@ textarea {
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -159,13 +156,13 @@ textarea {
 }
 
 @utility animate-sheet {
-  animation: sheet-up 320ms cubic-bezier(0.32, 0.72, 0, 1);
+  animation: sheet-up 300ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 @utility animate-fade {
-  animation: fade-in 200ms ease-out;
+  animation: fade-in 180ms ease-out;
 }
 @utility animate-rise {
-  animation: rise 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: rise 360ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -48,7 +48,7 @@ async function parseWithAI(message: string, source: "app" | "shortcut" = "shortc
           wallet,
         },
         walletSpecified,
-        reply: `✅ *Tercatat (${type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(wallet)})*\n${cat.emoji} ${cat.label} · ${formatRp(amount)}\n_${note}_`,
+        reply: `Tercatat (${type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(wallet)})\n${cat.label} · ${formatRp(amount)} — ${note}`,
       };
     }
 
@@ -59,7 +59,7 @@ async function parseWithAI(message: string, source: "app" | "shortcut" = "shortc
       return {
         kind: "debt",
         data: { direction, person, amount: Math.round(amount), paid: 0, due_date: null, note },
-        reply: `✅ *${direction === "owe" ? "Hutang" : "Piutang"} tercatat*\n${person} · ${formatRp(amount)}`,
+        reply: `${direction === "owe" ? "Hutang" : "Piutang"} tercatat · ${person} · ${formatRp(amount)}`,
       };
     }
 
@@ -69,7 +69,7 @@ async function parseWithAI(message: string, source: "app" | "shortcut" = "shortc
         kind: "savings",
         goalHint,
         amount: Math.round(amount),
-        reply: `✅ *Tabungan tercatat*\nSetor ${formatRp(amount)}${goalHint ? ` → ${goalHint}` : ""}`,
+        reply: `Tabungan tercatat · Setor ${formatRp(amount)}${goalHint ? ` ke ${goalHint}` : ""}`,
       };
     }
 

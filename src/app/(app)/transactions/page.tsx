@@ -9,7 +9,7 @@ import { sumBy } from "@/lib/finance";
 import type { WalletType } from "@/lib/types";
 import { Chip, EmptyState, Eyebrow, PageHeader } from "@/components/ui";
 import { TransactionRow } from "@/components/TransactionRow";
-import { IconSearch } from "@/components/Icons";
+import { CategoryIcon, IconCash, IconDigital, IconSearch } from "@/components/Icons";
 
 type Filter = "all" | "expense" | "income";
 type WalletFilter = "all" | WalletType;
@@ -56,7 +56,7 @@ export default function TransactionsPage() {
 
       {/* Pencarian */}
       <label className="card flex items-center gap-2.5 px-3.5 py-2.5">
-        <IconSearch width={18} height={18} className="text-muted" />
+        <IconSearch width={17} height={17} className="text-muted" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -81,11 +81,21 @@ export default function TransactionsPage() {
         <Chip active={filter === "income"} onClick={() => setFilter("income")}>
           Income
         </Chip>
-        <Chip active={walletFilter === "digital"} onClick={() => setWalletFilter(walletFilter === "digital" ? "all" : "digital")}>
-          💳 Digital
+        <Chip
+          active={walletFilter === "digital"}
+          onClick={() => setWalletFilter(walletFilter === "digital" ? "all" : "digital")}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <IconDigital width={14} height={14} /> Digital
+          </span>
         </Chip>
-        <Chip active={walletFilter === "cash"} onClick={() => setWalletFilter(walletFilter === "cash" ? "all" : "cash")}>
-          💵 Cash
+        <Chip
+          active={walletFilter === "cash"}
+          onClick={() => setWalletFilter(walletFilter === "cash" ? "all" : "cash")}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <IconCash width={14} height={14} /> Cash
+          </span>
         </Chip>
       </div>
 
@@ -95,7 +105,9 @@ export default function TransactionsPage() {
         </Chip>
         {ALL_CATEGORIES.map((c) => (
           <Chip key={c.id} active={cat === c.id} onClick={() => setCat(c.id)}>
-            {c.emoji} {c.label}
+            <span className="inline-flex items-center gap-1.5">
+              <CategoryIcon id={c.id} width={14} height={14} /> {c.label}
+            </span>
           </Chip>
         ))}
       </div>
@@ -106,7 +118,7 @@ export default function TransactionsPage() {
           Masuk: <b className="num text-oliva">{formatRp(totalIn)}</b>
         </span>
         <span>
-          Keluar: <b className="num text-terracotta">{formatRp(totalOut)}</b>
+          Keluar: <b className="num text-ink">{formatRp(totalOut)}</b>
         </span>
       </div>
 

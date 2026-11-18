@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     if (!process.env.GEMINI_API_KEY) {
       return Response.json({
         text:
-          "💡 GEMINI_API_KEY belum diisi di file .env.local. " +
+          "GEMINI_API_KEY belum diisi di file .env.local. " +
           "Ringkasan di atas sudah dihitung otomatis oleh Bilancio. " +
           "Setelah kamu menambahkan GEMINI_API_KEY dari Google AI Studio, tombol ini akan memberikan analisis dan saran personal dari Gemini.",
       });

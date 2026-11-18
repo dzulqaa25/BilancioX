@@ -89,7 +89,7 @@ function extractAmount(text: string): { amount: number; cleaned: string } {
 }
 
 export function walletLabel(w: WalletType): string {
-  return w === "cash" ? "💵 Cash" : "💳 Digital";
+  return w === "cash" ? "Cash" : "Digital";
 }
 
 /**
@@ -106,7 +106,7 @@ export function parseMessageLocal(rawText: string, source: "app" | "shortcut" = 
     return {
       kind: "summary",
       reply:
-        "📊 *Format Input Cepat Bilancio*\n" +
+        "Format Input Cepat Bilancio\n" +
         "• Pengeluaran: `fried chicken 30rb cash`, `ojol ke kampus 15k qris`\n" +
         "• Pemasukan: `uang jajan 1,5jt digital`, `masuk 200rb cash`\n" +
         "• Hutang: `hutang ke Budi 50rb beli buku`\n" +
@@ -131,7 +131,7 @@ export function parseMessageLocal(rawText: string, source: "app" | "shortcut" = 
       kind: "savings",
       goalHint,
       amount,
-      reply: `✅ *Tabungan tercatat*\nSetor ${formatRp(amount)}${goalHint ? ` → ${goalHint}` : ""}`,
+      reply: `Tabungan tercatat · Setor ${formatRp(amount)}${goalHint ? ` ke ${goalHint}` : ""}`,
     };
   }
 
@@ -151,7 +151,7 @@ export function parseMessageLocal(rawText: string, source: "app" | "shortcut" = 
     return {
       kind: "debt",
       data: { direction, person, amount, paid: 0, due_date: null, note },
-      reply: `✅ *${direction === "owe" ? "Hutang" : "Piutang"} tercatat*\n${person} · ${formatRp(amount)}`,
+      reply: `${direction === "owe" ? "Hutang" : "Piutang"} tercatat · ${person} · ${formatRp(amount)}`,
     };
   }
 
@@ -188,7 +188,7 @@ export function parseMessageLocal(rawText: string, source: "app" | "shortcut" = 
     kind: "transaction",
     data: tx,
     walletSpecified: walletInfo.specified,
-    reply: `✅ *Tercatat (${type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(walletInfo.wallet)})*\n${cat.emoji} ${cat.label} · ${formatRp(amount)}\n_${note}_`,
+    reply: `Tercatat (${type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(walletInfo.wallet)})\n${cat.label} · ${formatRp(amount)} — ${note}`,
   };
 }
 

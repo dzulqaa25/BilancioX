@@ -14,7 +14,7 @@ import { formatCompact, formatRp, formatShortDate } from "@/lib/format";
 import { getCategory } from "@/lib/categories";
 import { Button, Chip, EmptyState, Eyebrow, PageHeader, ProgressBar } from "@/components/ui";
 import { CategoryBadge } from "@/components/TransactionRow";
-import { IconSparkle } from "@/components/Icons";
+import { IconCash, IconDigital, IconSparkle } from "@/components/Icons";
 
 export default function InsightsPage() {
   const { data } = useStore();
@@ -87,11 +87,13 @@ export default function InsightsPage() {
               </div>
             </div>
             <div className="mt-4 flex w-full justify-between rounded-2xl bg-soft px-4 py-2.5 text-xs">
-              <span>
-                💳 Digital: <b className="num text-amalfi">{formatRp(a.digitalExpense)}</b>
+              <span className="inline-flex items-center gap-1.5">
+                <IconDigital width={15} height={15} className="text-muted" /> Digital:{" "}
+                <b className="num text-ink">{formatRp(a.digitalExpense)}</b>
               </span>
-              <span>
-                💵 Cash: <b className="num">{formatRp(a.cashExpense)}</b>
+              <span className="inline-flex items-center gap-1.5">
+                <IconCash width={15} height={15} className="text-muted" /> Cash:{" "}
+                <b className="num text-ink">{formatRp(a.cashExpense)}</b>
               </span>
             </div>
           </section>
@@ -105,15 +107,15 @@ export default function InsightsPage() {
                   <div className="mb-2 flex items-center gap-3">
                     <CategoryBadge id={c.id} size={36} />
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium">{c.label}</p>
+                      <p className="text-sm font-medium">{c.label}</p>
                       <p className="text-xs text-muted">{c.count} transaksi</p>
                     </div>
                     <div className="text-right">
-                      <p className="num font-medium">{formatRp(c.total)}</p>
+                      <p className="num text-sm font-medium">{formatRp(c.total)}</p>
                       <p className="num text-xs text-muted">{Math.round(c.share * 100)}%</p>
                     </div>
                   </div>
-                  <ProgressBar value={c.share} color={c.color} />
+                  <ProgressBar value={c.share} color="var(--ink)" />
                 </div>
               ))}
             </div>
@@ -124,12 +126,12 @@ export default function InsightsPage() {
             <section className="card flex items-center justify-between p-4">
               <div>
                 <Eyebrow>Biggest Expense</Eyebrow>
-                <p className="mt-1 font-medium">
+                <p className="mt-1 text-sm font-medium">
                   {a.biggest.note || getCategory(a.biggest.category).label}
                 </p>
                 <p className="text-xs text-muted">{formatShortDate(a.biggest.date)}</p>
               </div>
-              <p className="num font-serif text-2xl text-terracotta">{formatRp(a.biggest.amount)}</p>
+              <p className="num font-serif text-2xl text-ink">{formatRp(a.biggest.amount)}</p>
             </section>
           )}
         </>
@@ -138,12 +140,12 @@ export default function InsightsPage() {
       <div className="double-rule" />
 
       {/* Ringkasan AI */}
-      <section className="card border-oro p-5">
-        <p className="flex items-center gap-1.5 font-serif text-lg italic text-terracotta">
-          <IconSparkle width={18} height={18} /> AI Summary
+      <section className="card p-5">
+        <p className="flex items-center gap-1.5 font-serif text-lg italic text-ink">
+          <IconSparkle width={17} height={17} className="text-oro" /> AI Summary
         </p>
 
-        <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed">
+        <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-muted">
           {tips.map((t, i) => (
             <li key={i}>{t}</li>
           ))}
@@ -161,7 +163,7 @@ export default function InsightsPage() {
           disabled={aiLoading || a.expense === 0}
           onClick={askGemini}
         >
-          <IconSparkle width={18} height={18} />
+          <IconSparkle width={17} height={17} />
           {aiLoading ? "Gemini sedang menganalisis…" : "Minta saran mendalam dari Gemini"}
         </Button>
       </section>
@@ -169,10 +171,10 @@ export default function InsightsPage() {
   );
 }
 
-/** Diagram donat SVG murni tanpa library tambahan. */
+/** Diagram donat SVG murni dengan palet monokrom-hangat Italia. */
 function Donut({ stats, total }: { stats: CategoryStat[]; total: number }) {
-  const size = 188;
-  const stroke = 22;
+  const size = 184;
+  const stroke = 20;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const segments = stats.map((s, idx) => {

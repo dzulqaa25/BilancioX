@@ -20,7 +20,15 @@ import type { NewTransaction, WalletType } from "@/lib/types";
 import { Sheet } from "@/components/Sheet";
 import { AmountInput, Button, EmptyState, Eyebrow, PageHeader, ProgressBar, Segmented } from "@/components/ui";
 import { TransactionRow } from "@/components/TransactionRow";
-import { IconChevron, IconShare, IconSparkle } from "@/components/Icons";
+import {
+  CategoryIcon,
+  IconCash,
+  IconChevron,
+  IconDigital,
+  IconShare,
+  IconSparkle,
+  IconTransfer,
+} from "@/components/Icons";
 
 export default function HomePage() {
   const { data, settings, mode, session, addTransaction, addDebt, addEntry, transferWallet } = useStore();
@@ -73,7 +81,7 @@ export default function HomePage() {
       await addTransaction(tx);
       const cat = getCategory(tx.category);
       setQuickNotice(
-        `✅ Tercatat (${tx.type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(wallet)})\n${cat.emoji} ${cat.label} · ${formatRp(tx.amount)} (${tx.note})`,
+        `Tercatat (${tx.type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(wallet)})\n${cat.label} · ${formatRp(tx.amount)} (${tx.note})`,
       );
     } catch (err) {
       setQuickNotice(`Gagal menyimpan: ${err instanceof Error ? err.message : "Terjadi kesalahan"}`);
@@ -99,7 +107,7 @@ export default function HomePage() {
           <Link
             href="/settings"
             aria-label="Settings"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-oro font-serif text-sm"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-card font-serif text-sm"
           >
             {initial}
           </Link>
@@ -110,30 +118,32 @@ export default function HomePage() {
       {pendingTx && (
         <div className="card space-y-3 border-oro p-4 text-xs">
           <p className="font-medium text-terracotta">
-            💡 Kamu belum menuliskan jenis saldo (&ldquo;cash&rdquo; / &ldquo;digital&rdquo;).
+            Kamu belum menuliskan jenis saldo (&ldquo;cash&rdquo; / &ldquo;digital&rdquo;).
           </p>
-          <p className="text-ink">
-            Pilih shortcut jenis saldo untuk menyimpan{" "}
-            <b>
-              {getCategory(pendingTx.category).emoji} {getCategory(pendingTx.category).label} ·{" "}
-              {formatRp(pendingTx.amount)}
-            </b>{" "}
-            ({pendingTx.note}):
-          </p>
+          <div className="flex items-center gap-2.5 text-ink">
+            <CategoryIcon id={pendingTx.category} width={18} height={18} />
+            <span>
+              Pilih jenis saldo untuk{" "}
+              <b>
+                {getCategory(pendingTx.category).label} · {formatRp(pendingTx.amount)}
+              </b>{" "}
+              ({pendingTx.note}):
+            </span>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => confirmPendingWallet("cash")}
-              className="rounded-2xl bg-hero px-3 py-2.5 font-medium text-hero-ink active:scale-95"
+              className="flex items-center justify-center gap-1.5 rounded-2xl bg-hero px-3 py-2.5 font-medium text-hero-ink active:scale-95"
             >
-              💵 Cash (Tunai)
+              <IconCash width={16} height={16} /> Cash
             </button>
             <button
               type="button"
               onClick={() => confirmPendingWallet("digital")}
-              className="rounded-2xl bg-amalfi px-3 py-2.5 font-medium text-white active:scale-95"
+              className="flex items-center justify-center gap-1.5 rounded-2xl border border-line bg-soft px-3 py-2.5 font-medium text-ink active:scale-95"
             >
-              💳 Saldo Digital
+              <IconDigital width={16} height={16} /> Digital
             </button>
           </div>
         </div>
@@ -158,34 +168,43 @@ export default function HomePage() {
       )}
 
       {/* Kartu lengkung utama + pembagian Saldo Cash & Digital */}
-      <section className="arch bg-hero px-6 pt-9 pb-5 text-center text-hero-ink shadow-[0_20px_40px_-20px_rgba(43,33,28,0.55)]">
-        <p className="text-xs uppercase tracking-[0.26em] opacity-70">Net Balance</p>
+      <section className="arch bg-hero px-6 pt-9 pb-5 text-center text-hero-ink shadow-[0_18px_36px_-22px_rgba(36,28,24,0.5)]">
+        <p className="text-xs uppercase tracking-[0.26em] opacity-65">Net Balance</p>
         <p className="num mt-1.5 font-serif text-4xl">{formatRp(wallets.total)}</p>
 
         {/* Rincian Saldo Digital vs Cash */}
-        <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-white/8 px-3 py-2.5 text-left text-xs">
-          <div>
-            <p className="opacity-70">💳 Digital</p>
-            <p className="num mt-0.5 font-semibold">{formatRp(wallets.digital)}</p>
+        <div className="mt-3.5 grid grid-cols-2 gap-2 rounded-2xl bg-white/7 px-3.5 py-2.5 text-left text-xs">
+          <div className="flex items-center gap-2.5">
+            <IconDigital width={17} height={17} className="shrink-0 opacity-75" />
+            <div>
+              <p className="opacity-65">Digital</p>
+              <p className="num font-medium">{formatRp(wallets.digital)}</p>
+            </div>
           </div>
-          <div className="border-l border-white/15 pl-3">
-            <p className="opacity-70">💵 Cash</p>
-            <p className="num mt-0.5 font-semibold">{formatRp(wallets.cash)}</p>
+          <div className="flex items-center gap-2.5 border-l border-white/15 pl-3">
+            <IconCash width={17} height={17} className="shrink-0 opacity-75" />
+            <div>
+              <p className="opacity-65">Cash</p>
+              <p className="num font-medium">{formatRp(wallets.cash)}</p>
+            </div>
           </div>
         </div>
 
-        <div className="rule-oro my-3.5 opacity-60" />
+        <div className="rule-oro my-3.5 opacity-55" />
         <div className="flex items-center justify-around text-xs">
           <button onClick={() => openNew("income")} className="active:opacity-70">
-            <span className="text-[#a7b56e]">▲</span> Income <b className="num">{formatCompact(month.income)}</b>
+            <span className="opacity-70">+</span> Income <b className="num">{formatCompact(month.income)}</b>
           </button>
-          <span className="opacity-30">|</span>
+          <span className="opacity-25">|</span>
           <button onClick={() => openNew("expense")} className="active:opacity-70">
-            <span className="text-[#e58b6b]">▼</span> Expense <b className="num">{formatCompact(month.expense)}</b>
+            <span className="opacity-70">−</span> Expense <b className="num">{formatCompact(month.expense)}</b>
           </button>
-          <span className="opacity-30">|</span>
-          <button onClick={() => setTransferOpen(true)} className="opacity-85 active:opacity-60">
-            ⇄ Pindah
+          <span className="opacity-25">|</span>
+          <button
+            onClick={() => setTransferOpen(true)}
+            className="inline-flex items-center gap-1 opacity-85 active:opacity-60"
+          >
+            <IconTransfer width={14} height={14} /> Pindah
           </button>
         </div>
       </section>
@@ -195,8 +214,8 @@ export default function HomePage() {
         <section className="card space-y-3 p-4">
           <div className="flex items-center justify-between">
             <Eyebrow>Budget Control</Eyebrow>
-            <Link href="/settings#advanced" className="text-xs font-medium text-terracotta">
-              Edit Budget →
+            <Link href="/settings#advanced" className="text-xs font-medium text-muted">
+              Edit →
             </Link>
           </div>
 
@@ -208,15 +227,15 @@ export default function HomePage() {
 
           {budgets.safeDailyAllowance !== null && (
             <p className="rounded-xl bg-soft px-3 py-2 text-xs text-muted">
-              💡 Jatah aman untuk {budgets.remainingDaysInMonth} hari sisa bulan ini:{" "}
+              Jatah aman untuk {budgets.remainingDaysInMonth} hari sisa bulan ini:{" "}
               <b className="num text-ink">{formatRp(budgets.safeDailyAllowance)}/hari</b>
             </p>
           )}
         </section>
       ) : (
         <Link href="/settings#advanced" className="card flex items-center justify-between px-4 py-3 text-xs">
-          <span>🎯 Atur batas budget Harian, Mingguan, &amp; Bulanan</span>
-          <span className="font-medium text-terracotta">Advanced →</span>
+          <span className="text-muted">Atur batas budget Harian, Mingguan, &amp; Bulanan</span>
+          <span className="font-medium text-ink">Advanced →</span>
         </Link>
       )}
 
@@ -224,34 +243,34 @@ export default function HomePage() {
       <div className="grid grid-cols-2 gap-3">
         <Link href="/savings?tab=debts" className="card p-4 active:scale-[0.99]">
           <Eyebrow>Debts</Eyebrow>
-          <p className="num mt-1 text-lg font-semibold text-amalfi">{formatRp(debtOwe)}</p>
+          <p className="num mt-1 font-serif text-xl text-ink">{formatRp(debtOwe)}</p>
           <p className="mt-0.5 text-xs text-muted">
             {debtOwed > 0 ? `Piutang ${formatCompact(debtOwed)}` : "Hutang berjalan"}
           </p>
         </Link>
         <Link href="/savings" className="card p-4 active:scale-[0.99]">
           <Eyebrow>Savings</Eyebrow>
-          <p className="num mt-1 text-lg font-semibold text-limone">{formatRp(saved)}</p>
+          <p className="num mt-1 font-serif text-xl text-ink">{formatRp(saved)}</p>
           <p className="mt-0.5 text-xs text-muted">{data.goals.length} target aktif</p>
         </Link>
       </div>
 
       {/* Kartu AI Insight */}
-      <Link href="/insights" className="card block border-oro p-4 active:scale-[0.99]">
+      <Link href="/insights" className="card block p-4 active:scale-[0.99]">
         <div className="flex items-center justify-between">
-          <p className="flex items-center gap-1.5 font-serif text-base italic text-terracotta">
-            <IconSparkle width={16} height={16} /> AI Insight
+          <p className="flex items-center gap-1.5 font-serif text-base italic text-ink">
+            <IconSparkle width={15} height={15} className="text-oro" /> AI Insight
           </p>
-          <IconChevron width={18} height={18} className="text-muted" />
+          <IconChevron width={17} height={17} className="text-muted" />
         </div>
-        <p className="mt-1 text-sm leading-relaxed">{tip}</p>
+        <p className="mt-1 text-sm leading-relaxed text-muted">{tip}</p>
       </Link>
 
       {/* Transaksi terbaru */}
-      <section className="pt-2">
+      <section className="pt-1">
         <div className="mb-2 flex items-center justify-between">
           <Eyebrow>Recent Activity</Eyebrow>
-          <Link href="/transactions" className="text-xs font-medium text-terracotta">
+          <Link href="/transactions" className="text-xs font-medium text-muted">
             See all →
           </Link>
         </div>
@@ -289,13 +308,13 @@ export default function HomePage() {
 function BudgetRow({ bar }: { bar: BudgetBar }) {
   const over = bar.spent > bar.limit;
   const warn = bar.ratio >= 0.75 && !over;
-  const color = over ? "var(--terracotta)" : warn ? "var(--limone-fill)" : "var(--oliva)";
+  const color = over ? "var(--terracotta)" : warn ? "var(--oro)" : "var(--ink)";
   return (
     <div className="space-y-1 text-xs">
       <div className="flex justify-between">
         <span className="font-medium">
           {bar.label}{" "}
-          <span className="text-muted font-normal">
+          <span className="font-normal text-muted">
             ({Math.round(bar.ratio * 100)}%)
           </span>
         </span>
@@ -325,8 +344,8 @@ function TransferForm({ onSave }: { onSave: (from: WalletType, amount: number) =
         value={from}
         onChange={setFrom}
         options={[
-          { value: "digital", label: "💳 Digital → 💵 Cash (Tarik ATM)", activeClass: "bg-hero text-hero-ink" },
-          { value: "cash", label: "💵 Cash → 💳 Digital (Top-Up)", activeClass: "bg-amalfi text-white" },
+          { value: "digital", label: "Digital ke Cash (Tarik ATM)", activeClass: "bg-hero text-hero-ink" },
+          { value: "cash", label: "Cash ke Digital (Top-Up)", activeClass: "bg-hero text-hero-ink" },
         ]}
       />
       <AmountInput label="Nominal yang dipindahkan" value={amount} onChange={setAmount} autoFocus large />
@@ -350,7 +369,7 @@ function InstallPrompt() {
 
   return (
     <div className="card flex items-start gap-3 p-4 text-xs">
-      <IconShare className="mt-0.5 shrink-0 text-terracotta" />
+      <IconShare className="mt-0.5 shrink-0 text-ink" />
       <div className="flex-1 leading-relaxed">
         <p className="font-semibold text-ink">Install on iPhone</p>
         <p className="text-muted">

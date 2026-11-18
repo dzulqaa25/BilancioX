@@ -9,7 +9,15 @@ import { walletBalances } from "@/lib/finance";
 import { formatRp, todayISO } from "@/lib/format";
 import type { NewTransaction, WalletType } from "@/lib/types";
 import { AmountInput, Button, Eyebrow, PageHeader, Segmented } from "@/components/ui";
-import { IconChevronLeft, IconShortcut } from "@/components/Icons";
+import {
+  CategoryIcon,
+  IconCash,
+  IconCheck,
+  IconChevronLeft,
+  IconDigital,
+  IconShortcut,
+  IconTransfer,
+} from "@/components/Icons";
 
 const EXAMPLES = [
   "fried chicken 30rb",
@@ -79,7 +87,6 @@ export default function SettingsPage() {
       }
 
       if (intent.kind === "transaction") {
-        // Jika pengguna belum menuliskan "cash"/"digital", tampilkan pengingat & shortcut pilihan
         if (!intent.walletSpecified) {
           setPendingTx(intent.data);
           return;
@@ -114,7 +121,7 @@ export default function SettingsPage() {
       const cat = getCategory(finalTx.category);
       setPendingTx(null);
       setLastReply(
-        `✅ Tercatat (${finalTx.type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(wallet)})\n${cat.emoji} ${cat.label} · ${formatRp(finalTx.amount)}\n${finalTx.note ?? ""}`,
+        `Tercatat (${finalTx.type === "income" ? "Pemasukan" : "Pengeluaran"} · ${walletLabel(wallet)})\n${cat.label} · ${formatRp(finalTx.amount)} — ${finalTx.note ?? ""}`,
       );
     } catch (err) {
       setLastReply(`Gagal menyimpan: ${err instanceof Error ? err.message : "Terjadi kesalahan"}`);
@@ -141,7 +148,7 @@ export default function SettingsPage() {
       cashInitial: cashInit,
       digitalInitial: digitalInit,
     });
-    setSavedNotice("Pengaturan Advanced berhasil disimpan ✓");
+    setSavedNotice("Pengaturan Advanced berhasil disimpan");
     setTimeout(() => setSavedNotice(null), 2500);
   }
 
@@ -152,8 +159,8 @@ export default function SettingsPage() {
     setTransferAmt(0);
     setSavedNotice(
       transferDir === "digital"
-        ? `Berhasil pindah ${formatRp(transferAmt)} dari Digital ke Cash ✓`
-        : `Berhasil pindah ${formatRp(transferAmt)} dari Cash ke Digital ✓`,
+        ? `Berhasil pindah ${formatRp(transferAmt)} dari Digital ke Cash`
+        : `Berhasil pindah ${formatRp(transferAmt)} dari Cash ke Digital`,
     );
     setTimeout(() => setSavedNotice(null), 2500);
   }
@@ -193,11 +200,11 @@ export default function SettingsPage() {
       {/* Quick Input (AI) dengan Pengingat & Shortcut Cash/Digital */}
       <section className="card p-4">
         <div className="flex items-center gap-2">
-          <IconShortcut className="text-terracotta" />
+          <IconShortcut className="text-ink" />
           <div>
             <Eyebrow>Quick Input (AI)</Eyebrow>
             <p className="text-xs text-muted">
-              Ketik kalimat bebas — otomatis mengenali makanan bahasa Inggris &amp; mengingatkan pilihan Cash/Digital
+              Ketik kalimat bebas — otomatis mengenali makanan bahasa Inggris &amp; pilihan Cash/Digital
             </p>
           </div>
         </div>
@@ -241,40 +248,43 @@ export default function SettingsPage() {
         {pendingTx && (
           <div className="mt-3 space-y-2.5 rounded-2xl border border-oro bg-soft p-3.5 text-xs leading-relaxed">
             <p className="font-semibold text-terracotta">
-              💡 Kamu belum menuliskan &ldquo;cash&rdquo; atau &ldquo;digital&rdquo;.
+              Kamu belum menuliskan &ldquo;cash&rdquo; atau &ldquo;digital&rdquo;.
             </p>
-            <p className="text-ink">
-              AI mengkategorikan ini sebagai{" "}
-              <b>
-                {getCategory(pendingTx.category).emoji} {getCategory(pendingTx.category).label} ·{" "}
-                {formatRp(pendingTx.amount)}
-              </b>{" "}
-              ({pendingTx.note}). Pilih shortcut jenis saldo:
-            </p>
+            <div className="flex items-center gap-2 text-ink">
+              <CategoryIcon id={pendingTx.category} width={17} height={17} />
+              <span>
+                AI mengkategorikan ini sebagai{" "}
+                <b>
+                  {getCategory(pendingTx.category).label} · {formatRp(pendingTx.amount)}
+                </b>{" "}
+                ({pendingTx.note}). Pilih jenis saldo:
+              </span>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 disabled={sending}
                 onClick={() => confirmPendingWallet("cash")}
-                className="rounded-xl bg-hero px-3 py-2.5 font-medium text-hero-ink active:scale-95"
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-hero px-3 py-2.5 font-medium text-hero-ink active:scale-95"
               >
-                💵 Cash (Tunai)
+                <IconCash width={16} height={16} /> Cash (Tunai)
               </button>
               <button
                 type="button"
                 disabled={sending}
                 onClick={() => confirmPendingWallet("digital")}
-                className="rounded-xl bg-amalfi px-3 py-2.5 font-medium text-white active:scale-95"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-line bg-card px-3 py-2.5 font-medium text-ink active:scale-95"
               >
-                💳 Saldo Digital
+                <IconDigital width={16} height={16} /> Saldo Digital
               </button>
             </div>
           </div>
         )}
 
         {lastReply && (
-          <div className="mt-3 rounded-2xl bg-soft p-3 text-xs leading-relaxed whitespace-pre-line">
-            {lastReply}
+          <div className="mt-3 flex items-start gap-2 rounded-2xl bg-soft p-3 text-xs leading-relaxed whitespace-pre-line">
+            <IconCheck width={16} height={16} className="mt-0.5 shrink-0 text-oliva" />
+            <span>{lastReply}</span>
           </div>
         )}
       </section>
@@ -291,13 +301,19 @@ export default function SettingsPage() {
 
         {/* Ringkasan Saldo Saat Ini */}
         <div className="grid grid-cols-2 gap-2.5 rounded-2xl bg-soft p-3 text-xs">
-          <div>
-            <p className="text-muted">💳 Saldo Digital saat ini</p>
-            <p className="num mt-0.5 text-sm font-semibold text-amalfi">{formatRp(wallets.digital)}</p>
+          <div className="flex items-center gap-2.5">
+            <IconDigital width={17} height={17} className="shrink-0 text-muted" />
+            <div>
+              <p className="text-muted">Saldo Digital</p>
+              <p className="num mt-0.5 text-sm font-semibold text-ink">{formatRp(wallets.digital)}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-muted">💵 Saldo Cash saat ini</p>
-            <p className="num mt-0.5 text-sm font-semibold text-ink">{formatRp(wallets.cash)}</p>
+          <div className="flex items-center gap-2.5">
+            <IconCash width={17} height={17} className="shrink-0 text-muted" />
+            <div>
+              <p className="text-muted">Saldo Cash</p>
+              <p className="num mt-0.5 text-sm font-semibold text-ink">{formatRp(wallets.cash)}</p>
+            </div>
           </div>
         </div>
 
@@ -309,7 +325,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 checked={autoBreak}
                 onChange={(e) => setAutoBreak(e.target.checked)}
-                className="accent-terracotta"
+                className="accent-ink"
               />
               Otomatis bagi ke Mingguan &amp; Harian
             </label>
@@ -346,18 +362,18 @@ export default function SettingsPage() {
 
           <Eyebrow>2 · Penyesuaian Saldo Awal (Opsional)</Eyebrow>
           <p className="text-xs text-muted">
-            Gunakan jika kamu ingin menyamakan saldo awal 💳 Digital dan 💵 Cash dengan isi dompetmu saat ini.
+            Gunakan jika kamu ingin menyamakan saldo awal Digital dan Cash dengan isi dompetmu saat ini.
           </p>
           <div className="grid grid-cols-2 gap-3">
             <AmountInput
               key={`di-${settings.digitalInitial}`}
-              label="Saldo Awal 💳 Digital"
+              label="Saldo Awal Digital"
               value={digitalInit}
               onChange={setDigitalInit}
             />
             <AmountInput
               key={`ci-${settings.cashInitial}`}
-              label="Saldo Awal 💵 Cash"
+              label="Saldo Awal Cash"
               value={cashInit}
               onChange={setCashInit}
             />
@@ -370,13 +386,16 @@ export default function SettingsPage() {
 
         {/* Form Pindah Saldo (Tarik Tunai / Top-Up) */}
         <form onSubmit={submitTransfer} className="space-y-3">
-          <Eyebrow>3 · ⇄ Pindah Saldo (Tarik Tunai ATM / Top-Up)</Eyebrow>
+          <div className="flex items-center gap-1.5">
+            <IconTransfer width={15} height={15} className="text-muted" />
+            <Eyebrow>3 · Pindah Saldo (Tarik Tunai ATM / Top-Up)</Eyebrow>
+          </div>
           <Segmented
             value={transferDir}
             onChange={setTransferDir}
             options={[
-              { value: "digital", label: "💳 Digital → 💵 Cash", activeClass: "bg-hero text-hero-ink" },
-              { value: "cash", label: "💵 Cash → 💳 Digital", activeClass: "bg-amalfi text-white" },
+              { value: "digital", label: "Digital ke Cash", activeClass: "bg-hero text-hero-ink" },
+              { value: "cash", label: "Cash ke Digital", activeClass: "bg-hero text-hero-ink" },
             ]}
           />
           <AmountInput label="Nominal perpindahan" value={transferAmt} onChange={setTransferAmt} />
@@ -404,7 +423,7 @@ export default function SettingsPage() {
             onClick={copyShortcutUrl}
             className="shrink-0 rounded-xl bg-hero px-3 py-1.5 font-medium text-hero-ink"
           >
-            {copied ? "Tersalin ✓" : "Salin Link"}
+            {copied ? "Tersalin" : "Salin Link"}
           </button>
         </div>
 

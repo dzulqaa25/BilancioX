@@ -18,9 +18,7 @@ import {
   Segmented,
   TextField,
 } from "@/components/ui";
-import { IconTrash } from "@/components/Icons";
-
-const GOAL_EMOJIS = ["🏝️", "💻", "🛡️", "🎓", "🛵", "📱", "🎸", "✈️"];
+import { GOAL_ICONS, GoalIcon, IconTrash } from "@/components/Icons";
 
 export default function SavingsPage() {
   const { data, addGoal, deleteGoal, addEntry, addDebt, updateDebt, deleteDebt } = useStore();
@@ -43,9 +41,9 @@ export default function SavingsPage() {
         <div className="flex items-baseline justify-between">
           <div>
             <Eyebrow>Savings Goals</Eyebrow>
-            <p className="num font-serif text-2xl text-limone">{formatRp(savedTotal)}</p>
+            <p className="num font-serif text-2xl text-ink">{formatRp(savedTotal)}</p>
           </div>
-          <button onClick={() => setGoalModal(true)} className="text-xs font-medium text-terracotta">
+          <button onClick={() => setGoalModal(true)} className="text-xs font-medium text-ink underline underline-offset-4">
             + New Goal
           </button>
         </div>
@@ -59,10 +57,12 @@ export default function SavingsPage() {
             return (
               <div key={g.id} className="card p-4">
                 <div className="flex items-start justify-between gap-2">
-                  <button onClick={() => setActiveGoal(g)} className="flex items-center gap-2.5 text-left">
-                    <span className="text-2xl">{g.emoji}</span>
+                  <button onClick={() => setActiveGoal(g)} className="flex items-center gap-3 text-left">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-soft text-ink">
+                      <GoalIcon name={g.emoji} width={19} height={19} />
+                    </span>
                     <div>
-                      <p className="font-medium">{g.name}</p>
+                      <p className="text-sm font-medium">{g.name}</p>
                       <p className="num text-xs text-muted">
                         {formatRp(current)} dari {formatRp(g.target)}
                       </p>
@@ -71,10 +71,10 @@ export default function SavingsPage() {
                   <span className="num font-serif text-lg">{Math.round(ratio * 100)}%</span>
                 </div>
                 <div className="my-3">
-                  <ProgressBar value={ratio} color="var(--limone-fill)" />
+                  <ProgressBar value={ratio} color="var(--ink)" />
                 </div>
                 <div className="flex justify-between text-xs">
-                  <button onClick={() => setActiveGoal(g)} className="font-medium text-oliva">
+                  <button onClick={() => setActiveGoal(g)} className="font-medium text-ink">
                     + Setor / Tarik
                   </button>
                   <button
@@ -97,9 +97,9 @@ export default function SavingsPage() {
         <div className="flex items-baseline justify-between">
           <div>
             <Eyebrow>Debts</Eyebrow>
-            <p className="num font-serif text-2xl text-amalfi">{formatRp(totalDebt(data, debtFilter))}</p>
+            <p className="num font-serif text-2xl text-ink">{formatRp(totalDebt(data, debtFilter))}</p>
           </div>
-          <button onClick={() => setDebtModal(true)} className="text-xs font-medium text-terracotta">
+          <button onClick={() => setDebtModal(true)} className="text-xs font-medium text-ink underline underline-offset-4">
             + New Debt
           </button>
         </div>
@@ -115,7 +115,7 @@ export default function SavingsPage() {
 
         {debts.length === 0 ? (
           <EmptyState
-            title={debtFilter === "owe" ? "Bebas hutang 🎉" : "Tidak ada piutang"}
+            title={debtFilter === "owe" ? "Bebas hutang" : "Tidak ada piutang"}
             hint="Catat pinjaman teman di sini supaya tidak lupa."
           />
         ) : (
@@ -127,14 +127,14 @@ export default function SavingsPage() {
                 <div key={d.id} className="py-3.5">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className={`font-medium ${done ? "line-through opacity-50" : ""}`}>{d.person}</p>
+                      <p className={`text-sm font-medium ${done ? "line-through opacity-50" : ""}`}>{d.person}</p>
                       <p className="text-xs text-muted">
                         {d.note || "Tanpa catatan"}
                         {d.due_date && ` · Tempo ${formatShortDate(d.due_date)}`}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="num font-medium text-amalfi">{done ? "Lunas" : formatRp(rem)}</p>
+                      <p className="num text-sm font-medium text-ink">{done ? "Lunas" : formatRp(rem)}</p>
                       {d.paid > 0 && !done && (
                         <p className="num text-xs text-muted">dari {formatRp(d.amount)}</p>
                       )}
@@ -143,12 +143,12 @@ export default function SavingsPage() {
                   <div className="mt-2 flex gap-4 text-xs">
                     {!done && (
                       <>
-                        <button onClick={() => setPayingDebt(d)} className="font-medium text-oliva">
+                        <button onClick={() => setPayingDebt(d)} className="font-medium text-ink">
                           Cicil / Bayar
                         </button>
                         <button
                           onClick={() => updateDebt(d.id, { paid: d.amount })}
-                          className="font-medium text-amalfi"
+                          className="font-medium text-muted"
                         >
                           Tandai lunas
                         </button>
@@ -183,7 +183,7 @@ export default function SavingsPage() {
       <Sheet
         open={Boolean(activeGoal)}
         onClose={() => setActiveGoal(null)}
-        title={activeGoal ? `${activeGoal.emoji} ${activeGoal.name}` : ""}
+        title={activeGoal ? activeGoal.name : ""}
         subtitle="Setoran diambil dari saldo bersihmu"
       >
         {activeGoal && (
@@ -234,7 +234,7 @@ function NewGoalForm({
   onSave: (g: { name: string; emoji: string; target: number; initial_amount: number; deadline: string | null }) => Promise<void>;
 }) {
   const [name, setName] = useState("");
-  const [emoji, setEmoji] = useState(GOAL_EMOJIS[0]);
+  const [iconId, setIconId] = useState<string>(GOAL_ICONS[0].id);
   const [target, setTarget] = useState(0);
   const [initial, setInitial] = useState(0);
 
@@ -243,25 +243,29 @@ function NewGoalForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!name.trim() || target <= 0) return;
-        onSave({ name: name.trim(), emoji, target, initial_amount: initial, deadline: null });
+        onSave({ name: name.trim(), emoji: iconId, target, initial_amount: initial, deadline: null });
       }}
       className="space-y-4 pb-2"
     >
       <div>
-        <FieldLabel>Icon</FieldLabel>
-        <div className="flex gap-2">
-          {GOAL_EMOJIS.map((em) => (
-            <button
-              key={em}
-              type="button"
-              onClick={() => setEmoji(em)}
-              className={`flex h-10 w-10 items-center justify-center rounded-xl border text-xl ${
-                emoji === em ? "border-oro bg-soft" : "border-line bg-card"
-              }`}
-            >
-              {em}
-            </button>
-          ))}
+        <FieldLabel>Symbol</FieldLabel>
+        <div className="grid grid-cols-4 gap-2">
+          {GOAL_ICONS.map((ic) => {
+            const active = iconId === ic.id;
+            return (
+              <button
+                key={ic.id}
+                type="button"
+                onClick={() => setIconId(ic.id)}
+                className={`flex flex-col items-center gap-1 rounded-2xl border py-2.5 text-xs transition ${
+                  active ? "border-ink bg-soft font-semibold text-ink" : "border-line bg-card text-muted"
+                }`}
+              >
+                <GoalIcon name={ic.id} width={19} height={19} />
+                {ic.label}
+              </button>
+            );
+          })}
         </div>
       </div>
       <TextField label="Goal Name" placeholder="mis. Laptop baru" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -290,7 +294,7 @@ function EntryForm({ onSave }: { onSave: (amount: number, note: string | null) =
         value={mode}
         onChange={setMode}
         options={[
-          { value: "deposit", label: "Deposit (Setor)", activeClass: "bg-oliva text-white" },
+          { value: "deposit", label: "Deposit (Setor)", activeClass: "bg-hero text-hero-ink" },
           { value: "withdraw", label: "Withdraw (Tarik)", activeClass: "bg-terracotta text-white" },
         ]}
       />
